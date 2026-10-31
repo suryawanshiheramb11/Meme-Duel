@@ -4,7 +4,7 @@ import { addCoins } from '../core/locker.js';
 // and online duels; online, only the host decides how a round ends and tells the guest.
 const ROUNDS_TO_WIN = 2;
 const ROUND_SECONDS = 99;
-const INTRO_SECONDS = 7.2; // announcement, 3-2-1, FIGHT: a proper breather before every round
+const INTRO_SECONDS = 4; // announcement, 3-2-1, FIGHT: a short, punchy start to every round
 const BETWEEN_SECONDS = 3.2;
 const FINISH_SECONDS = 6;
 const FATALITY_CODE = ['ArrowDown', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'Shift'];
@@ -175,7 +175,7 @@ export class Match {
     if (this.state === 'intro') {
       this.timer -= dt;
       const t = this.timer;
-      const step = t > 3.9 ? 'round' : t > 3 ? '3' : t > 2.1 ? '2' : t > 1.2 ? '1' : 'fight';
+      const step = t > 2.8 ? 'round' : t > 2.1 ? '3' : t > 1.4 ? '2' : t > 0.7 ? '1' : 'fight';
       if (step !== this.introStep) {
         this.introStep = step;
         if (step === 'fight') {
