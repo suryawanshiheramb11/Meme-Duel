@@ -103,9 +103,9 @@ export class Versus {
 
   wireMatch() {
     const m = this.match;
-    m.hooks.onRoundStart = (n) => {
+    m.hooks.onRoundStart = (n, a) => {
       this.puppetDead = false;
-      this.session.send({ t: 'round', n });
+      this.session.send({ t: 'round', n, a });
     };
     m.hooks.onRoundEnd = (w, r, s) =>
       this.session.send({ t: 'rend', w: w === 'me' ? 'host' : w === 'foe' ? 'guest' : 'draw', r, s: [s.me, s.foe] });
@@ -169,7 +169,7 @@ export class Versus {
           match.renderPips();
         }
         this.puppetDead = false;
-        match.beginRound(m.n);
+        match.beginRound(m.n, m.a);
         break;
       case 'rend': {
         if (this.host) break;

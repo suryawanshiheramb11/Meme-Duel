@@ -44,6 +44,12 @@ const $ = (sel, root = document) => root.querySelector(sel);
 
 document.body.classList.add('landing-active');
 
+// A different backdrop each visit, shared by the page background and the preview stage
+const BACKDROPS = ['wasteland', 'dojo', 'cyber', 'lava', 'space', 'meadow', 'crt', 'sketchpad'];
+const BACKDROP = `assets/arenas/${BACKDROPS[Math.floor(Math.random() * BACKDROPS.length)]}.jpg`;
+const ldBg = document.querySelector('.ld-bg');
+if (ldBg) ldBg.style.backgroundImage = `url('${BACKDROP}')`;
+
 // ------------------------------------------------------------------ starting the game
 let booting = false;
 const invite = (new URLSearchParams(location.search).get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -207,7 +213,7 @@ function makeFighter(isHero, variant) {
 }
 
 function loadStageAssets() {
-  stage.bg.src = 'assets/arenas/wasteland.jpg';
+  stage.bg.src = BACKDROP;
   fetch('assets/memes/manifest.json')
     .then((r) => r.json())
     .then(({ clips }) => {

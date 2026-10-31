@@ -51,19 +51,29 @@ function peerOptions() {
 function openPeer(id) {
   return new Promise((resolve, reject) => {
     const peer = id ? new window.Peer(id, peerOptions()) : new window.Peer(undefined, peerOptions());
+    const settle = () => {
+      clearTimeout(timer);
+      peer.off('open', onOpen);
+      peer.off('error', onError);
+    };
+    // These only watch the registration. Once the peer is open, later errors (like "nobody is
+    // waiting in that slot") are ordinary and must not tear the peer down.
+    const onOpen = () => {
+      settle();
+      resolve(peer);
+    };
+    const onError = (err) => {
+      settle();
+      peer.destroy();
+      reject(Object.assign(new Error(err.message || String(err)), { code: err.type || 'peer-error' }));
+    };
     const timer = setTimeout(() => {
+      settle();
       peer.destroy();
       reject(Object.assign(new Error('The matchmaking service did not answer.'), { code: 'broker-timeout' }));
     }, 9000);
-    peer.on('open', () => {
-      clearTimeout(timer);
-      resolve(peer);
-    });
-    peer.on('error', (err) => {
-      clearTimeout(timer);
-      peer.destroy();
-      reject(Object.assign(new Error(err.message || String(err)), { code: err.type || 'peer-error' }));
-    });
+    peer.on('open', onOpen);
+    peer.on('error', onError);
   });
 }
 
@@ -171,7 +181,8 @@ function handshakeAsGuest(conn, timeoutMs = 3500) {
 // Try to connect to a specific waiting host. Resolves with the open connection, or null.
 function tryJoin(peer, targetId, timeoutMs) {
   return new Promise((resolve) => {
-    const conn = peer.connect(targetId, { reliable: true });
+    const conn = peer.destroyed || peer.disconnected ? null : peer.connect(targetId, { reliable: true });
+    if (!conn) return resolve(null);
     let settled = false;
     const finish = (value) => {
       if (settled) return;
@@ -232,7 +243,15 @@ export async function createRoom({ onStatus } = {}) {
       });
     });
     peer.on('error', (err) => !cancelled && reject(Object.assign(new Error(err.message), { code: err.type })));
-    peer.on('disconnected', () => onStatus && onStatus('reconnecting'));
+    peer.on('disconnected', () => {
+      if (cancelled) return;
+      onStatus && onStatus('reconnecting');
+      try {
+        peer.reconnect();
+      } catch (e) {
+        /* the error handler above reports a dead broker */
+      }
+    });
   });
   return {
     code,

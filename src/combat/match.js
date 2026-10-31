@@ -3,7 +3,8 @@
 // and online duels; online, only the host decides how a round ends and tells the guest.
 const ROUNDS_TO_WIN = 2;
 const ROUND_SECONDS = 90;
-const INTRO_SECONDS = 2.9;
+const INTRO_SECONDS = 7.2; // announcement, 3-2-1, FIGHT: a proper breather before every round
+const ARENA_POOL = ['wasteland', 'dojo', 'cyber', 'lava', 'space', 'meadow', 'crt', 'sketchpad', 'desk'];
 const BETWEEN_SECONDS = 3.2;
 const FINISH_SECONDS = 6;
 const FATALITY_CODE = ['ArrowDown', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'Shift'];
@@ -134,8 +135,17 @@ export class Match {
     this.beginRound(1);
   }
 
-  beginRound(n) {
+  pickArena() {
+    const pool = ARENA_POOL.filter((k) => k !== this.arena.currentArenaKey);
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  beginRound(n, arenaKey) {
     this.round = n;
+    this.introStep = '';
+    // every round is fought somewhere new (the online host picks, the guest follows)
+    const key = arenaKey || (n > 1 ? this.pickArena() : this.arena.currentArenaKey);
+    if (key !== this.arena.currentArenaKey) this.arena.switchArena(key);
     this.state = 'intro';
     this.timer = INTRO_SECONDS;
     this.clock = ROUND_SECONDS;
@@ -158,16 +168,25 @@ export class Match {
     }
     this.audio.playSound && this.audio.playSound('streak_fire');
     this.setBadge(true);
-    if (this.hooks.onRoundStart && this.authority) this.hooks.onRoundStart(n);
+    if (this.hooks.onRoundStart && this.authority) this.hooks.onRoundStart(n, key);
   }
 
   update(dt) {
     if (this.state === 'intro') {
       this.timer -= dt;
-      if (this.timer < 0.8 && this.banner.textContent !== 'FIGHT!') {
-        this.say('FIGHT!', 'fight');
-        this.fx.flash('#ffd23a', 0.35, 0.3);
-        this.arena.triggerScreenShake(0.5);
+      const t = this.timer;
+      const step = t > 3.9 ? 'round' : t > 3 ? '3' : t > 2.1 ? '2' : t > 1.2 ? '1' : 'fight';
+      if (step !== this.introStep) {
+        this.introStep = step;
+        if (step === 'fight') {
+          this.say('FIGHT!', 'fight');
+          this.fx.flash('#ffd23a', 0.35, 0.3);
+          this.arena.triggerScreenShake(0.5);
+          this.audio.playImpactBoom && this.audio.playImpactBoom(1.2);
+        } else if (step !== 'round') {
+          this.say(step, 'count');
+          this.audio.playSound && this.audio.playSound('whoosh_light');
+        }
       }
       if (this.timer <= 0) {
         this.bars.className = '';
