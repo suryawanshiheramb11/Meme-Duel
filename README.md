@@ -9,7 +9,8 @@
 ## Contents
 
 1. [Quick start](#quick-start)
-2. [How to play](#how-to-play)
+2. [How to play](#how-to-play) (rounds and the fatality included)
+   - [Playing online](#playing-online)
 3. [The memes](#the-memes)
 4. [The bot and the three difficulty levels](#the-bot-and-the-three-difficulty-levels)
 5. [Power forms, rank and score](#power-forms-rank-and-score)
@@ -41,7 +42,7 @@ Node 18 or newer is enough to serve it. The game is plain static files: there is
 | Command | What it does |
 | :--- | :--- |
 | `npm run serve` | Serves the game on port 3000. `PORT=4000 npm run serve` changes the port; `ROOT=web-dist npm run serve` previews the hosted build. |
-| `npm test` | Runs the full check suite (158 checks). See [Tests](#tests). |
+| `npm test` | Runs the full check suite (169 checks). See [Tests](#tests). |
 | `npm run build:web` | Builds the slim copy that gets hosted into `web-dist/`. See [Hosting](#hosting-on-vercel). |
 | `npm run fetch:memes` | Downloads, crops, compresses and tags the meme clips. Needs `ffmpeg`. See [Customising](#customising-the-game). |
 | `npm run generate:arenas` | Repaints the nine arena backgrounds. See [Customising](#customising-the-game). |
@@ -83,9 +84,24 @@ Walking is on the arrow keys only, so that **A** and **D** stay available for ty
 
 On the start screen, **1 / 2 / 3** pick Easy / Medium / Hard (or click a card, or use ← → and Enter).
 
-### Health, KO and the bot's respawn
+### Rounds, health and the fatality
 
-You have 100 health and slowly regain it when nothing has hit you for 3 seconds (faster on Easy). If you're knocked out you get back up after about 2 seconds with brief invulnerability. When you knock the bot out, a new one runs in from off-screen with **more health** (+15 per knockout) and a **different look** (glasses, headband, mohawk or horns).
+A match is **first to two round wins** (best of three). Each round starts with a short introduction ("ROUND 1 begins", "ROUND 2 begins again", and a red-lit "FINAL ROUND" when it is 1-1), then **FIGHT!**. Fighters carry 2.4x the old health, so a round is a real fight rather than a few combos. A round ends on a KO, or when the 90-second clock runs out and whoever has more health left takes it. Between rounds the loser gets hit with *Emotional Damage*.
+
+Win the deciding round by KO and the screen says **FINISH HIM!**. You have six seconds to tap the fatality code: **↓ ↓ → ← then Shift**. A meme-card storm (or a beam) then blows your opponent into paper confetti. Miss the window and you still win, just without the style points. A round won without taking damage is a **FLAWLESS VICTORY**.
+
+---
+
+## Playing online
+
+**Play Online** on the landing page opens the lobby:
+
+- **Quick Match** pairs you with the next person who is searching. Two players looking at the same time find each other in a few seconds.
+- **Create Room** gives a five-letter code (and a copyable invite link, `?room=CODE`). A friend types it under **Join Room**, or just opens the link.
+
+Online duels are human against human: no bot, no secret moves, even health, same rounds and fatality. Hits are decided by the player being hit (so your own guard and dash always count), and the host keeps the clock.
+
+It is peer-to-peer (WebRTC through PeerJS). The only shared service is PeerJS's free public matchmaking broker, which just introduces two browsers; game data goes straight between them. Two limits to know about: a few strict corporate or mobile networks block direct connections and there is no relay server, and the free broker is a community service with no uptime guarantee. To self-host the broker, run `npx peerjs --port 9000` and open the game with `?signal=localhost:9000`.
 
 ---
 
@@ -148,22 +164,24 @@ The 92 clips come from a public Google Drive folder. `npm run fetch:memes` downl
 
 Pick a level on the start screen (**1 / 2 / 3**) or switch any time in the menu. It's remembered between visits and shown next to the foe's name.
 
-| | **Easy**: Chill Bot | **Medium**: Keyboard Warrior | **Hard**: Final Boss |
+| | **Easy**: Keyboard Warrior | **Medium**: Mind Reader | **Hard**: Omniscient |
 | :--- | :---: | :---: | :---: |
-| Bot health | 70% | 100% | 150% |
-| Damage per hit | 3 | 5 | 8 |
-| Warning before it hits | 0.55 s | 0.30 s | 0.20 s |
-| Time between attacks | 5.5-8 s | 3-4.8 s | 1.6-2.8 s |
-| Attacks it uses | slow punches only | jab, punch, heavy, sweep, rare ultra | all of those, plus frequent ultras |
-| Ultra | none | every 34-50 s | every 13-21 s, shorter warning |
-| Blocks your plain strikes | never | 10% (up to 32% in a long combo) | 28% (up to 50% in a long combo) |
-| Reads your air launcher | never | 15% | 55% |
-| Counter-pokes your dash | never | 20% | 65% |
-| Counters your typos | never | half the time | always |
-| Double swings | no | no | 35% of attacks |
-| Sidesteps your strikes | no | no | 12% |
-| Can finish you off while you idle | no | no | yes |
-| Score multiplier | 0.8x | 1x | 1.6x |
+| Bot health | 120% | 170% | 220% |
+| Damage per hit | 8 | 9 | 12 |
+| Warning before it hits | 0.20 s | 0.14 s | 0.10 s |
+| Time between attacks | 1.6-2.8 s | 1.1-2 s | 0.7-1.3 s |
+| Ultra | every 13-21 s | every 9-15 s | every 6-11 s, short warning |
+| Blocks your plain strikes | 28% | 38% | 50% (more in a long combo) |
+| Reads your air launcher | 55% | 70% | 85% |
+| Counter-pokes your dash | 65% | 80% | 95% |
+| Sidesteps your strikes | 12% (+ reads long strings) | 30% | 50% |
+| Dodge cooldown | 1.6 s | 0.8 s | 0.45 s |
+| Hits back right after a dodge | 15% | 40% | 70% |
+| Sees your special coming and evades it | 10% | 35% | 60% |
+| Double swings | 35% | 45% | 60% |
+| Score multiplier | 1.2x | 2x | 3x |
+
+The old Final Boss is now **Easy**. Medium and Hard predict your rhythm (the longer your string, the likelier a sidestep), slip beams and meteors by dashing clear during the charge, hop your thrown memes, and punish the opening a dodge creates.
 
 Every number lives in one table: `src/combat/difficulty.js`.
 
@@ -334,7 +352,7 @@ If the memes can't load, the game falls back to the short phrase list in `src/co
 ## Project structure
 
 ```
-index.html              page shell; preloads every module
+index.html              the landing page; the game loads when you press Play
 styles.css              all styling: HUD, menu, start screen, meme overlay
 server.js               tiny static server (ROOT / PORT env vars)
 src/
@@ -348,12 +366,20 @@ src/
     comboEngine.js      strikes, rank, forms, rage, the five special moves
     fightDirector.js    the bot: attack choice, telegraphs, counters, spacing, respawn
     difficulty.js       the three levels and the bot's attack table
+    match.js            rounds, the clock, FINISH HIM and fatalities
+    secrets.js          the hidden arrow-key moves
   render/
     arenas/arenaManager.js     backdrops, camera, shake, world-to-screen
     stickman/stickmanRig.js    the skeleton, poses and paper-cutout drawing
     stickman/paperStandee.js   a fighter: physics, knockback, animation state
     effects/effectsManager.js  auras, beam, sparks, rings, afterimages, weather
+  net/
+    netSession.js       PeerJS: quick match slots, room codes, ping
+    versus.js           online rules: puppet fighter, hit events, round sync
+  landing/
+    landing.js / .css   the landing page, how-to and meme gallery
   ui/
+    onlineLobby.js      quick match / create room / join room
     memeReactions.js    the overhead meme overlay, clip choice, prefetching
     memeComboMenu.js    the Esc menu
     modeSelect.js       the start-screen difficulty picker
@@ -367,7 +393,7 @@ assets/
   memes/                clips, thumbnails and manifest.json
   arenas/               generated backgrounds
   audio/                sound effects and music
-  libs/                 three.js (the only runtime dependency)
+  libs/                 three.js and PeerJS (vendored, no CDN at play time)
 test/
   verify_clone.js       the test suite behind `npm test`
 ```
@@ -378,7 +404,7 @@ test/
 
 ## Tests
 
-`npm test` runs 158 checks in a few seconds (it also rebuilds `web-dist/`). They cover:
+`npm test` runs 169 checks in a few seconds (it also rebuilds `web-dist/`). They cover:
 
 - required files, the arena images (all 1920×1080) and audio assets;
 - prompt logic: typing, accuracy, word and sentence events, queue order;

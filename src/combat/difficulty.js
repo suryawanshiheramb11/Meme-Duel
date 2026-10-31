@@ -63,75 +63,87 @@ export const VERSUS = {
 export const DIFFICULTIES = {
   easy: {
     label: 'EASY',
-    name: 'CHILL BOT',
-    blurb: 'Slow, clearly telegraphed attacks and a soft punch. Learn the moves in peace.',
-    enemyHp: 0.7, // multiplier on enemy health
-    damage: 3, // damage per enemy strike
-    windup: 0.55, // seconds the enemy telegraphs before hitting
-    attackWeights: { punch: 1 }, // which attacks it throws, and how often
-    ultra: null, // unblockable shockwave: { every: [min, max] seconds, windup }
-    guardChance: 0, // chance it blocks one of your plain strikes
-    readsLauncher: 0, // chance it sidesteps your air launcher
-    pokesDashIn: 0, // chance it counter-pokes when you dash in
-    adaptive: false, // blocks more as your combo grows
-    smart: null, // habit reading, chains, feints, parry, final form, thrown memes (medium and hard)
-    cooldown: [5.5, 8], // gap between attacks while you keep typing
-    idleCooldown: [4, 6], // gap between attacks when you stall
-    speed: 2.0, // enemy walk speed
-    counterOnTypo: 0, // chance a typo triggers an instant counter
-    doubleStrike: 0, // chance of a second hit right after the first
-    dodge: 0, // chance the enemy sidesteps one of your strikes
-    mercy: true, // idling can never finish you off
-    heroRegen: 8, // hero health regained per second when not being hit
-    score: 0.8 // score multiplier
+    name: 'KEYBOARD WARRIOR',
+    blurb: 'Used to be the final boss. Fast, double-hits, counters your typos and dodges some strikes.',
+    enemyHp: 1.2, // multiplier on enemy health
+    damage: 8, // damage per enemy strike
+    windup: 0.2, // seconds the enemy telegraphs before hitting
+    attackWeights: { jab: 3, punch: 2, heavy: 2, sweep: 2 }, // which attacks it throws, and how often
+    ultra: { every: [13, 21], windup: 0.95 }, // unblockable shockwave
+    guardChance: 0.28, // chance it blocks one of your plain strikes
+    readsLauncher: 0.55, // chance it sidesteps your air launcher
+    pokesDashIn: 0.65, // chance it counter-pokes when you dash in
+    adaptive: true, // blocks more as your combo grows
+    smart: { habits: true, chain: 3, chainChance: 0.55, feint: 0.15, parry: 0.18, rage: true, meme: { every: [11, 17], windup: 0.85 } },
+    cooldown: [1.6, 2.8], // gap between attacks while you keep typing
+    idleCooldown: [1.1, 1.9], // gap between attacks when you stall
+    speed: 3.4, // enemy walk speed
+    counterOnTypo: 1, // chance a typo triggers an instant counter
+    doubleStrike: 0.35, // chance of a second hit right after the first
+    dodge: 0.12, // chance the enemy sidesteps one of your strikes
+    dodgeCd: 1.6, // seconds between dodges
+    dodgeSpeed: 30, // how fast the sidestep is
+    counterAfterDodge: 0.15, // chance to hit back right after a dodge
+    avoidSpecial: 0.1, // chance to read and evade your special move
+    mercy: false,
+    heroRegen: 3, // hero health regained per second when not being hit
+    score: 1.2 // score multiplier
   },
   medium: {
     label: 'MEDIUM',
-    name: 'KEYBOARD WARRIOR',
-    blurb: 'A fair fight. Punishes typos some of the time and expects you to dodge.',
-    enemyHp: 1,
-    damage: 5,
-    windup: 0.3,
-    attackWeights: { jab: 2, punch: 2, heavy: 1, sweep: 1 },
-    ultra: { every: [34, 50], windup: 1.15 },
-    guardChance: 0.1,
-    readsLauncher: 0.15,
-    pokesDashIn: 0.2,
+    name: 'MIND READER',
+    blurb: 'Reads your rhythm, sidesteps strings of hits and hits back the moment you miss. Evades some specials.',
+    enemyHp: 1.7,
+    damage: 9,
+    windup: 0.14,
+    attackWeights: { jab: 3, punch: 3, heavy: 2, sweep: 2 },
+    ultra: { every: [9, 15], windup: 0.8 },
+    guardChance: 0.38,
+    readsLauncher: 0.7,
+    pokesDashIn: 0.8,
     adaptive: true,
-    smart: { habits: true, chain: 0, chainChance: 0, feint: 0.05, parry: 0, rage: false, meme: { every: [26, 38], windup: 1.2 } },
-    cooldown: [3, 4.8],
-    idleCooldown: [2.2, 3.4],
-    speed: 2.7,
-    counterOnTypo: 0.5,
-    doubleStrike: 0,
-    dodge: 0,
-    mercy: true,
-    heroRegen: 5,
-    score: 1
+    smart: { habits: true, chain: 3, chainChance: 0.7, feint: 0.22, parry: 0.26, rage: true, meme: { every: [8, 13], windup: 0.7 } },
+    cooldown: [1.1, 2.0],
+    idleCooldown: [0.8, 1.4],
+    speed: 3.9,
+    counterOnTypo: 1,
+    doubleStrike: 0.45,
+    dodge: 0.3,
+    dodgeCd: 0.8,
+    dodgeSpeed: 38,
+    counterAfterDodge: 0.4,
+    avoidSpecial: 0.35,
+    mercy: false,
+    heroRegen: 2,
+    score: 2
   },
   hard: {
     label: 'HARD',
-    name: 'FINAL BOSS',
-    blurb: 'Fast, tanky and ruthless. Counters every typo, double-hits, and dodges some of your strikes.',
-    enemyHp: 1.5,
-    damage: 8,
-    windup: 0.2,
-    attackWeights: { jab: 3, punch: 2, heavy: 2, sweep: 2 },
-    ultra: { every: [13, 21], windup: 0.95 },
-    guardChance: 0.28,
-    readsLauncher: 0.55,
-    pokesDashIn: 0.65,
+    name: 'OMNISCIENT',
+    blurb: 'Predicts your strikes, dodges at lightning speed, slips beams and thrown memes, and punishes every opening.',
+    enemyHp: 2.2,
+    damage: 12,
+    windup: 0.1,
+    attackWeights: { jab: 3, punch: 3, heavy: 3, sweep: 3 },
+    ultra: { every: [6, 11], windup: 0.62 },
+    guardChance: 0.5,
+    readsLauncher: 0.85,
+    pokesDashIn: 0.95,
     adaptive: true,
-    smart: { habits: true, chain: 3, chainChance: 0.55, feint: 0.15, parry: 0.18, rage: true, meme: { every: [11, 17], windup: 0.85 } },
-    cooldown: [1.6, 2.8],
-    idleCooldown: [1.1, 1.9],
-    speed: 3.4,
+    smart: { habits: true, chain: 4, chainChance: 0.85, feint: 0.3, parry: 0.4, rage: true, meme: { every: [5, 9], windup: 0.55 } },
+    cooldown: [0.7, 1.3],
+    idleCooldown: [0.5, 0.9],
+    speed: 4.6,
     counterOnTypo: 1,
-    doubleStrike: 0.35,
-    dodge: 0.12,
+    doubleStrike: 0.6,
+    dodge: 0.5,
+    dodgeCd: 0.45,
+    dodgeSpeed: 48,
+    counterAfterDodge: 0.7,
+    avoidSpecial: 0.6,
     mercy: false,
-    heroRegen: 3,
-    score: 1.6
+    heroRegen: 0,
+    score: 3
   }
 };
 

@@ -153,14 +153,23 @@ export class ComboEngine {
       color: this.sparkColor()
     });
 
-    // Hard bots sometimes sidestep a plain strike (specials and word bonuses always connect)
-    if (this.difficulty && this.difficulty.dodge > 0 && !enemy.isAirborne && enemy.pose !== 'hurt' && Math.random() < this.difficulty.dodge) {
-      const away = Math.sign(enemy.x - hero.x) || 1;
-      enemy.slideTo(Math.max(-6, Math.min(6, enemy.x + away * 1.1)), 26);
-      this.fx.afterimage(enemy, '#ff9a9a', 0.3);
-      this.fx.floatText('TOO SLOW', enemy.x, enemy.y + 2.3, { color: '#ff9a9a', size: 26, cls: 'fx-pop' });
-      if (this.memes) this.memes.trigger('dodge', { priority: 2, chance: 0.5, side: 'right' });
-      return;
+    // Smart bots read your rhythm: the longer your string and the steadier your typing, the likelier
+    // they are to sidestep. A dodge has a short cooldown, so it can't be spammed for free.
+    const nowDodge = performance.now();
+    const lvlD = this.difficulty;
+    if (lvlD && lvlD.dodge > 0 && !enemy.isAirborne && enemy.pose !== 'hurt' && enemy.invulnTimer <= 0 && nowDodge >= (this.dodgeReadyAt || 0)) {
+      const reading = lvlD.smart ? Math.min(0.25, this.hits * 0.02) : 0;
+      if (Math.random() < lvlD.dodge + reading) {
+        this.dodgeReadyAt = nowDodge + (lvlD.dodgeCd || 1.2) * 1000;
+        const away = Math.sign(enemy.x - hero.x) || 1;
+        enemy.invulnTimer = 0.25;
+        enemy.slideTo(Math.max(-6, Math.min(6, enemy.x + away * 1.25)), lvlD.dodgeSpeed || 26);
+        this.fx.afterimage(enemy, '#ff9a9a', 0.3);
+        this.fx.floatText('TOO SLOW', enemy.x, enemy.y + 2.3, { color: '#ff9a9a', size: 26, cls: 'fx-pop' });
+        if (this.memes) this.memes.trigger('dodge', { priority: 2, chance: 0.5, side: 'right' });
+        if (this.onDodge) this.onDodge();
+        return;
+      }
     }
 
     const base = type === 'crit' ? 14 : type === 'heavy' ? 9 : 6;
@@ -422,6 +431,7 @@ export class ComboEngine {
     if (!clips.length) return false;
     const clip = clips[Math.floor(Math.random() * clips.length)];
     this.memeReadyAt = now + 5000;
+    if (this.onThrowStart) this.onThrowStart();
     this.lastActionAt = now;
     hero.setPose('punch', 0.25, true);
     this.audio.playSound('whoosh_light');
@@ -616,6 +626,7 @@ export class ComboEngine {
       return;
     }
     this.specials++;
+    if (this.onSpecialStart) this.onSpecialStart(move);
 
     const perform = () => {
       if (hero.health <= 0) return;

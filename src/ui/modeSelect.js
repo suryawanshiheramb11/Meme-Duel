@@ -7,10 +7,10 @@ const ORDER = ['easy', 'medium', 'hard'];
 function stats(d) {
   const avgCooldown = (d.cooldown[0] + d.cooldown[1]) / 2;
   return [
-    ['BOT HEALTH', d.enemyHp / 1.5],
-    ['HIT POWER', d.damage / 8],
-    ['SPEED', d.speed / 3.4],
-    ['AGGRESSION', Math.min(1, 1.6 / avgCooldown + (d.doubleStrike ? 0.2 : 0))]
+    ['BOT HEALTH', d.enemyHp / 2.2],
+    ['HIT POWER', d.damage / 12],
+    ['SPEED', d.speed / 4.6],
+    ['AGGRESSION', Math.min(1, 0.9 / avgCooldown + (d.doubleStrike ? 0.15 : 0))]
   ];
 }
 

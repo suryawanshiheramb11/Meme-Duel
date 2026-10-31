@@ -25,6 +25,7 @@ const GAME_MODULES = [
   'src/combat/fightDirector.js',
   'src/combat/difficulty.js',
   'src/combat/secrets.js',
+  'src/combat/match.js',
   'src/render/arenas/arenaManager.js',
   'src/render/effects/effectsManager.js',
   'src/render/stickman/stickmanRig.js',

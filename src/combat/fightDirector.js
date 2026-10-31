@@ -55,6 +55,12 @@ export class FightDirector {
     combo.onDashIn = () => this.counterPoke();
     combo.onHabit = (kind) => this.noteHabit(kind);
     combo.onParry = () => this.forceAttack('punch');
+    combo.onDodge = () => {
+      if (Math.random() < (this.diff.counterAfterDodge || 0) && !this.attack) this.forceAttack(Math.random() < 0.6 ? 'jab' : 'punch');
+    };
+    // The bot sees your special coming and tries to be somewhere else
+    combo.onSpecialStart = (move) => this.avoidSpecial(move);
+    combo.onThrowStart = () => this.avoidThrow();
     this.resetUltraTimer();
   }
 
@@ -107,6 +113,8 @@ export class FightDirector {
 
   rebuildDiff() {
     this.diff = withPersonality(this.baseDiff, this.personality);
+    // the fighters carry more health now, so the bot hits proportionally harder
+    this.diff.damage = this.baseDiff.damage * HEALTH_SCALE * 0.8;
     this.combo.difficulty = this.diff;
     this.combo.difficultyKey = this.diffKey;
   }
@@ -115,6 +123,30 @@ export class FightDirector {
   forceAttack(type) {
     this.queuedAttack = type;
     this.attackCooldown = Math.min(this.attackCooldown, 0.12);
+  }
+
+  avoidSpecial(move) {
+    const e = this.enemy;
+    if (this.versus || e.health <= 0 || this.entering || this.paused) return;
+    if (Math.random() >= (this.diff.avoidSpecial || 0)) return;
+    const h = this.hero;
+    const away = Math.sign(e.x - h.x) || 1;
+    // Slip out of the way: a burst of invulnerability and a dash to the far side
+    e.invulnTimer = Math.max(e.invulnTimer, move === 'beam' ? 1.5 : 1.3);
+    e.slideTo(Math.max(-6, Math.min(6, e.x + away * (move === 'beam' ? 2.4 : 1.8))), this.diff.dodgeSpeed || 30);
+    this.fx.afterimage(e, '#9be8ff', 0.4);
+    this.fx.floatText('SAW IT COMING', e.x, e.y + 2.5, { color: '#9be8ff', size: 24, cls: 'fx-pop' });
+    this.attackCooldown = Math.min(this.attackCooldown, 0.4);
+  }
+
+  avoidThrow() {
+    const e = this.enemy;
+    if (this.versus || e.health <= 0 || this.entering) return;
+    if (Math.random() >= (this.diff.avoidSpecial || 0) * 1.2) return;
+    setTimeout(() => {
+      e.invulnTimer = Math.max(e.invulnTimer, 0.7);
+      if (!e.isAirborne) e.jump(7);
+    }, 150);
   }
 
   // You dashed in from range: harder bots meet you with a quick poke.

@@ -284,9 +284,9 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(falling((d) => d.windup), 'Attack telegraph shrinks with difficulty (less time to react)');
   assert(falling((d) => d.cooldown[0]) && falling((d) => d.cooldown[1]), 'Time between attacks shrinks with difficulty');
   assert(rising((d) => d.counterOnTypo + d.doubleStrike + d.dodge), 'Typo counters, double swings and dodges all grow with difficulty');
-  assert(lv[0].mercy && lv[1].mercy && !lv[2].mercy, 'Only hard can finish you off while idle');
+  assert(lv.every((d) => !d.mercy), 'Every level can finish you off (the old final boss is now Easy)');
   assert(rising((d) => d.score), 'Higher difficulty scores more');
-  assert(lv.every((d) => d.cooldown[0] < d.cooldown[1] && d.idleCooldown[0] < d.idleCooldown[1] && d.windup > 0.1), 'Every level has sane cooldown ranges and a reactable windup');
+  assert(lv.every((d) => d.cooldown[0] < d.cooldown[1] && d.idleCooldown[0] < d.idleCooldown[1] && d.windup >= 0.1), 'Every level has sane cooldown ranges and a reactable windup');
   const dirSrc = fs.readFileSync(path.join(ROOT, 'src/combat/fightDirector.js'), 'utf8');
   assert(/setDifficulty\(/.test(dirSrc) && /this\.diff\.windup/.test(dirSrc) && /this\.diff\.damage/.test(dirSrc), 'Fight director reads the difficulty table');
   assert(fs.existsSync(path.join(ROOT, 'src/ui/modeSelect.js')), 'Start-screen mode picker exists');
@@ -316,7 +316,10 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   const srcCount = (function walk(d) {
     return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [e]));
   })(path.join(ROOT, 'src')).length;
-  assert(preloaded >= srcCount + 2, `Every game module is preloaded in parallel (${preloaded} modulepreload links for ${srcCount} modules + three.js)`);
+  const landingSrc = fs.readFileSync(path.join(ROOT, 'src/landing/landing.js'), 'utf8');
+  const listed = (landingSrc.match(/'(?:src|assets)\/[^']+\.js'/g) || []).length;
+  const gameModules = srcCount - fs.readdirSync(path.join(ROOT, 'src/landing')).length;
+  assert(preloaded >= 2 && listed >= gameModules + 2, `Landing page warms every game module (${listed} listed for ${gameModules} modules + three.js)`);
   assert(!/@import/.test(fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8')), 'No render-blocking @import in the stylesheet');
 
   console.log('');
@@ -328,14 +331,15 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(ATTACKS.jab.windup < ATTACKS.punch.windup && ATTACKS.punch.windup < ATTACKS.heavy.windup, 'Attack telegraphs run jab < punch < heavy');
   assert(ATTACKS.jab.dmg < ATTACKS.punch.dmg && ATTACKS.punch.dmg < ATTACKS.heavy.dmg && ATTACKS.heavy.dmg < ATTACKS.ultra.dmg, 'Attack damage runs jab < punch < heavy < ultra');
   assert(ATTACKS.ultra.unblockable && ATTACKS.sweep.low, 'Ultra is unblockable and the sweep is a low attack you can jump');
-  assert(Object.keys(ATTACKS).every((k) => ATTACKS[k].reach > 0 && ATTACKS[k].pose), 'Every attack has a reach and a pose');
+  assert(Object.keys(ATTACKS).every((k) => (ATTACKS[k].reach > 0 || ATTACKS[k].projectile) && ATTACKS[k].pose), 'Every attack has a reach and a pose');
   const lv2 = ['easy', 'medium', 'hard'].map((k) => D2[k]);
-  assert(!lv2[0].ultra && lv2[1].ultra && lv2[2].ultra, 'Easy has no ultra; medium and hard do');
-  assert(lv2[2].ultra.every[1] < lv2[1].ultra.every[0] && lv2[2].ultra.windup < lv2[1].ultra.windup, 'Hard throws ultras more often with less warning than medium');
+  assert(lv2.every((d) => d.ultra), 'Every level has an ultra');
+  assert(lv2[2].ultra.every[0] < lv2[1].ultra.every[0] && lv2[1].ultra.every[0] < lv2[0].ultra.every[0] && lv2[2].ultra.windup < lv2[1].ultra.windup && lv2[1].ultra.windup < lv2[0].ultra.windup, 'Ultras come more often with less warning as difficulty rises');
   assert(lv2[0].guardChance < lv2[1].guardChance && lv2[1].guardChance < lv2[2].guardChance, 'Bot blocks more as difficulty rises');
   assert(lv2[0].readsLauncher < lv2[1].readsLauncher && lv2[1].readsLauncher < lv2[2].readsLauncher, 'Bot reads your air launcher more as difficulty rises');
   assert(lv2[0].pokesDashIn < lv2[1].pokesDashIn && lv2[1].pokesDashIn < lv2[2].pokesDashIn, 'Bot counter-pokes your dash more as difficulty rises');
-  assert(Object.keys(lv2[0].attackWeights).length === 1 && Object.keys(lv2[2].attackWeights).length >= 4, 'Easy throws one attack; hard throws a full moveset');
+  assert(lv2.every((d) => Object.keys(d.attackWeights).length >= 4), 'Every level throws a full moveset');
+  assert(lv2[0].dodge < lv2[1].dodge && lv2[1].dodge < lv2[2].dodge && lv2[0].dodgeCd > lv2[1].dodgeCd && lv2[1].dodgeCd > lv2[2].dodgeCd && lv2[0].avoidSpecial < lv2[2].avoidSpecial, 'Bots dodge more, faster and read your specials better as difficulty rises');
   assert(Object.keys(lv2[2].attackWeights).every((k) => ATTACKS[k]), 'Every weighted attack exists in the attack table');
 
   const inSrc = fs.readFileSync(path.join(ROOT, 'src/core/inputManager.js'), 'utf8');
@@ -375,6 +379,25 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(lp.queue.slice(0, 5).map((q) => q.move).join() === 'flurry,slam,powerup,beam,timeskip', 'Queue is sorted as a ladder: flurry, slam, power surge, beam, time skip');
   assert(lp.queue.slice(5, 10).map((q) => q.move).join() === 'flurry,slam,powerup,beam,timeskip', 'The ladder repeats for the next round');
 
+  console.log('');
+
+  // ---- [11] Rounds, fatality, online play, removed/added memes
+  console.log('\n[11/11] Rounds, fatality, online duels, meme list...');
+  const rd = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+  const matchSrc = rd('src/combat/match.js');
+  assert(/ROUNDS_TO_WIN\s*=\s*2/.test(matchSrc) && /ROUND_SECONDS/.test(matchSrc), 'A match is first to two rounds, with a round clock');
+  assert(/FINISH HIM/.test(matchSrc) && /FATALITY_CODE/.test(matchSrc) && /fatality\(kind, byMe\)/.test(matchSrc), 'The deciding KO opens a FINISH HIM window with a fatality');
+  assert(/FINAL ROUND/.test(matchSrc) && /BEGINS/.test(matchSrc) && /round-bars/.test(matchSrc), 'Round 1, round 2 and the final round each get an introduction');
+  assert(/HEALTH_SCALE\s*=\s*2/.test(rd('src/combat/fightDirector.js')), 'Fighters carry extra health so rounds last');
+  const netSrc = rd('src/net/netSession.js');
+  assert(/md-room-/.test(netSrc) && /createRoom/.test(netSrc) && /joinRoom/.test(netSrc), 'Private rooms with a join code');
+  assert(/quickMatch/.test(netSrc) && /unavailable-id/.test(netSrc) && /SLOTS/.test(netSrc), 'Quick match pairs searching players through waiting slots');
+  const vsSrc = rd('src/net/versus.js');
+  assert(/t: 'hit'/.test(vsSrc) && /takeIncoming/.test(vsSrc) && /t: 'rend'/.test(vsSrc), 'Online: defender-authoritative hits and host-decided round ends');
+  assert(fs.existsSync(path.join(ROOT, 'assets/libs/peerjs.min.js')), 'PeerJS is vendored (no CDN at play time)');
+  const manifest3 = JSON.parse(rd('assets/memes/manifest.json')).clips;
+  assert(!manifest3.some((c) => /gareeb/i.test(c.title + c.phrase)), 'The "Mein Gareeb hun" meme is gone');
+  assert(manifest3.some((c) => c.phrase === 'EMOTIONAL DAMAGE' && fs.existsSync(path.join(ROOT, 'assets/memes', c.file))), 'Emotional Damage is in the meme set');
   console.log('');
 
 console.log('\n====================================================');
