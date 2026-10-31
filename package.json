@@ -8,7 +8,8 @@
     "serve": "node server.js",
     "build:app": "node scripts/package.js",
     "test": "node test/verify_clone.js",
-    "generate:arenas": "node scripts/generate_arenas.js"
+    "generate:arenas": "node scripts/generate_arenas.js",
+    "fetch:memes": "node scripts/fetch_memes.js"
   },
   "keywords": [
     "typing",

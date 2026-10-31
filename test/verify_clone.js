@@ -24,7 +24,7 @@ console.log('KEYBOARD WARRIOR STICKMAN: 1:1 CLONE VERIFICATION');
 console.log('====================================================\n');
 
 // 1. Core Architecture & Modules
-console.log('[1/6] Verifying 1:1 Engine Architecture & Source Modules...');
+console.log('[1/7] Verifying 1:1 Engine Architecture & Source Modules...');
 const requiredFiles = [
   'index.html',
   'styles.css',
@@ -53,7 +53,7 @@ for (const rel of requiredFiles) {
 }
 
 // 2. Generated arena backdrops & paper texture
-console.log('\n[2/6] Verifying Generated Arena Backdrops...');
+console.log('\n[2/7] Verifying Generated Arena Backdrops...');
 const arenaFiles = ['desk', 'crt', 'meadow', 'sketchpad', 'dojo', 'cyber', 'wasteland', 'space', 'lava'];
 for (const name of arenaFiles) {
   const rel = `assets/arenas/${name}.jpg`;
@@ -63,7 +63,7 @@ for (const name of arenaFiles) {
 assert(fs.existsSync(path.join(ROOT, 'assets/textures/paper/notebook_paper.png')), 'Notebook paper texture present');
 
 // 3. Audio Engine & SFX Assets
-console.log('\n[3/6] Verifying Mechanical Audio & Combat SFX...');
+console.log('\n[3/7] Verifying Mechanical Audio & Combat SFX...');
 const audioFiles = [
   'assets/audio/sfx/keys/thock_01.ogg',
   'assets/audio/sfx/keys/thock_02.ogg',
@@ -84,7 +84,7 @@ for (const audio of audioFiles) {
 }
 
 // 4. Prompt Engine Logic Simulation
-console.log('\n[4/6] Testing Prompt Engine Mechanics (Typing, Red Cursor, Accuracy)...');
+console.log('\n[4/7] Testing Prompt Engine Mechanics (Typing, Red Cursor, Accuracy)...');
 // Import PromptManager logic simulation
 class MockPromptManager {
   constructor() {
@@ -127,7 +127,7 @@ assert(promptTester.goodCount === 1 && promptTester.missCount === 1, 'Metrics: 1
 assert(promptTester.getAccuracy() === 50, 'Accuracy correctly calculated as 50%');
 
 // 5. Combat & DMC Style Rank Engine Simulation
-console.log('\n[5/6] Testing Combat Engine (DMC Ranks, Air Launcher, Slam, Rage)...');
+console.log('\n[5/7] Testing Combat Engine (DMC Ranks, Air Launcher, Slam, Rage)...');
 class MockComboEngine {
   constructor() {
     this.hits = 0;
@@ -165,7 +165,7 @@ comboTester.triggerRageMode();
 assert(comboTester.isRageMode === true, 'Caps Lock Rage Mode active');
 
 // 6. Regression tests for the reported bugs: A/D keys, alignment, arena wiring
-console.log('\n[6/6] Regression: typing keys, fighter alignment, arena wiring...');
+console.log('\n[6/7] Regression: typing keys, fighter alignment, arena wiring...');
 
 // 6a. Every letter must reach the typing prompt. WASD movement used to swallow A and D.
 const inputSrc = fs.readFileSync(path.join(ROOT, 'src/core/inputManager.js'), 'utf8');
@@ -212,6 +212,63 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   } catch (e) {
     console.log('  (skipped backdrop size check: @napi-rs/canvas not installed)');
   }
+
+  // 7. Meme clips, meme queue and special moves
+  console.log('\n[7/7] Meme clips, queue phrases and special moves...');
+  const memeDir = path.join(ROOT, 'assets/memes');
+  const manifestPath = path.join(memeDir, 'manifest.json');
+  assert(fs.existsSync(manifestPath), 'Meme manifest exists (run `npm run fetch:memes` if missing)');
+  if (fs.existsSync(manifestPath)) {
+    const { clips } = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    assert(clips.length >= 90, `Meme manifest lists ${clips.length} clips`);
+    const missing = clips.filter((c) => !fs.existsSync(path.join(memeDir, c.file)) || fs.statSync(path.join(memeDir, c.file)).size < 5000);
+    assert(missing.length === 0, `Every listed clip file exists${missing.length ? ' (missing ' + missing.length + ')' : ''}`);
+    assert(clips.every((c) => c.duration > 0 && c.duration <= 6.5), 'Clips are 6 seconds or shorter');
+
+    const queued = clips.filter((c) => c.phrase);
+    const moves = ['beam', 'slam', 'flurry', 'timeskip', 'powerup'];
+    assert(queued.length >= 40, `${queued.length} memes have a typeable catchphrase`);
+    assert(queued.every((c) => /^[A-Z0-9 ]+$/.test(c.phrase) && c.phrase.length <= 36), 'Every phrase is plain A-Z/0-9/space and fits on screen');
+    assert(queued.every((c) => moves.includes(c.move)), 'Every phrase maps to a known special move');
+    assert(moves.every((m) => queued.some((c) => c.move === m)), 'All five special moves are used by at least one meme');
+    assert(queued.every((c) => c.thumb && fs.existsSync(path.join(memeDir, c.thumb))), 'Every queued meme has a thumbnail');
+    const dupes = queued.length - new Set(queued.map((c) => c.phrase)).size;
+    assert(dupes <= 2, `Phrases are (almost) all unique (${dupes} duplicate)`);
+    const tagged = new Set(clips.flatMap((c) => c.tags));
+    for (const t of ['ko', 'typo', 'hurt', 'powerup', 'slam', 'beam', 'dodge', 'enter', 'timeskip', 'idle']) {
+      assert(tagged.has(t), `Reaction tag has clips: ${t}`);
+    }
+  }
+
+  // The queue wiring: prompt manager, combo engine and HUD must agree on the move names.
+  const promptSrc = fs.readFileSync(path.join(ROOT, 'src/combat/promptManager.js'), 'utf8');
+  const comboSrc2 = fs.readFileSync(path.join(ROOT, 'src/combat/comboEngine.js'), 'utf8');
+  const hudSrc = fs.readFileSync(path.join(ROOT, 'src/ui/retroHud.js'), 'utf8');
+  assert(/setQueue\(/.test(promptSrc) && /onWordComplete/.test(promptSrc), 'Prompt manager has a meme queue and word-complete hook');
+  for (const m of ['beam', 'slam', 'flurry', 'timeskip', 'powerup']) {
+    assert(new RegExp(`${m}:\\s*'`).test(hudSrc) && new RegExp(`${m}:\\s*'`).test(comboSrc2), `HUD and combat engine both know the "${m}" move`);
+  }
+  assert(/registerWord\(/.test(comboSrc2) && /triggerSpecial\(/.test(comboSrc2), 'Combat engine has word bonus and sentence special');
+
+  // Prompt queue behaviour, simulated with the real class (pure logic, no DOM).
+  const pmSrc = promptSrc.replace(/^export /gm, '');
+  const PM = new Function(`${pmSrc}\nreturn PromptManager;`)();
+  const fired = { sentences: [], words: [] };
+  const pm = new PM((item) => fired.sentences.push(item && item.phrase), (w) => fired.words.push(w));
+  pm.setQueue([
+    { phrase: 'AB CD', move: 'beam', clip: {} },
+    { phrase: 'EF GH', move: 'beam', clip: {} },
+    { phrase: 'IJ', move: 'slam', clip: {} }
+  ]);
+  assert(pm.currentItem && pm.peek(2).length === 2, 'Queue loads a current item and previews the next ones');
+  assert(pm.queue[0].move !== pm.queue[1].move || pm.queue.every((q) => q.move === pm.queue[0].move), 'Same special move is not queued back to back when avoidable');
+  const first = pm.currentText;
+  for (const ch of first) pm.handleKeyPress(ch);
+  assert(fired.sentences[0] === first, 'Finishing a phrase reports that meme item');
+  assert(fired.words.length === first.split(' ').length - 1, 'Each finished word (except the last) fires the word hook');
+  assert(pm.currentText !== first, 'Queue advances to the next meme after a phrase');
+
+  console.log('');
 
 console.log('\n====================================================');
 console.log(`TOTAL TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);

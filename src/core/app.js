@@ -8,6 +8,7 @@ import { FightDirector } from '../combat/fightDirector.js';
 import { PromptManager } from '../combat/promptManager.js';
 import { RetroHud } from '../ui/retroHud.js';
 import { MemeComboMenu } from '../ui/memeComboMenu.js';
+import { MemeReactions } from '../ui/memeReactions.js';
 import { InputManager } from './inputManager.js';
 
 const MUSIC = {
@@ -55,6 +56,12 @@ export class App {
     this.combo = new ComboEngine(this.audio, this.arena, this.fx);
     this.combo.bindFighters(this.hero, this.enemy);
 
+    // Meme reaction popups (KO laughs, typo apologies, power-up hype, ...)
+    this.memes = new MemeReactions(this.container, this.audio);
+    this.combo.memes = this.memes;
+    this.lastIdleMeme = performance.now();
+    this.introShown = false;
+
     // 5. Enemy AI, spacing & camera focus
     this.director = new FightDirector({
       hero: this.hero,
@@ -64,19 +71,34 @@ export class App {
       arena: this.arena,
       audio: this.audio
     });
+    this.director.memes = this.memes;
 
     // 6. Floating prompt engine: finishing a sentence fires the beam finisher
-    this.prompt = new PromptManager(() => {
-      this.combo.addStylePoints(60);
-      this.combo.triggerBeam(this.hero, this.enemy);
-    });
+    // Each prompt is a meme's catchphrase: letters strike, finished words add a bonus hit,
+    // and the finished phrase plays that meme and fires its special move.
+    this.prompt = new PromptManager(
+      (item) => {
+        this.combo.addStylePoints(60);
+        this.combo.triggerSpecial(this.hero, this.enemy, item);
+      },
+      (word) => this.combo.registerWord(word, this.hero, this.enemy)
+    );
 
     // 7. HUD
     this.hud = new RetroHud(this.container);
     this.hud.updatePrompt(this.prompt);
 
+    // Build the meme queue as soon as the clip list is known
+    this.memes.loaded.then(() => {
+      const items = this.memes.clips.filter((c) => c.phrase).map((c) => ({ phrase: c.phrase, clip: c, move: c.move }));
+      if (items.length) {
+        this.prompt.setQueue(items);
+        this.hud.updatePrompt(this.prompt);
+      }
+    });
+
     // 8. Meme Combo Maker menu
-    this.menu = new MemeComboMenu(this.container, this.arena, this.prompt, this.audio, this.combo);
+    this.menu = new MemeComboMenu(this.container, this.arena, this.prompt, this.audio, this.combo, this.memes);
 
     // 9. Input
     this.input = new InputManager(
@@ -95,6 +117,13 @@ export class App {
       this.audioStarted = true;
       this.audio.init();
       this.audio.playMusic(this.pendingMusic);
+      // First keypress doubles as the user gesture that lets clips play with sound
+      setTimeout(() => {
+        if (!this.introShown) {
+          this.introShown = true;
+          this.memes.trigger('intro', { priority: 2, side: 'right', force: true });
+        }
+      }, 500);
       window.removeEventListener('keydown', startAudioOnce);
       window.removeEventListener('click', startAudioOnce);
     };
@@ -130,6 +159,13 @@ export class App {
     this.hero.update(simDt);
     this.enemy.update(simDt);
     this.director.update(simDt);
+
+    // Left alone for a while: a "waiting..." style meme
+    const nowMs = performance.now();
+    if (nowMs - this.combo.lastActionAt > 9000 && nowMs - this.lastIdleMeme > 22000 && this.audioStarted) {
+      this.lastIdleMeme = nowMs;
+      this.memes.trigger('idle', { priority: 1, chance: 0.8, side: 'right' });
+    }
 
     this.fx.update(dt, this.arena.camX);
     this.arena.update(delta);

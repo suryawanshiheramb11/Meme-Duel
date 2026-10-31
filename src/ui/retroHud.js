@@ -1,6 +1,14 @@
 // Keyboard Warrior Stickman - Retro Steam Game HUD & Floating 3D/2.5D Prompt Overlay
 import { FORM_LABELS, FORM_COLORS } from '../render/effects/effectsManager.js';
 
+const MOVE_LABELS = {
+  beam: 'BEAM FINISHER',
+  slam: 'METEOR SLAM',
+  flurry: 'MEME FLURRY',
+  timeskip: 'TIME SKIP',
+  powerup: 'POWER SURGE'
+};
+
 export class RetroHud {
   constructor(container) {
     this.container = container;
@@ -23,6 +31,9 @@ export class RetroHud {
           <div class="hp-track"><div id="enemy-hp-fill" class="hp-fill"></div></div>
         </div>
       </div>
+
+      <!-- Meme queue: the meme being typed now and the next ones, with the special move each unlocks -->
+      <div id="meme-queue"></div>
 
       <!-- Top / Center Floating In-Arena Prompt -->
       <div id="floating-prompt-container">
@@ -92,6 +103,8 @@ export class RetroHud {
     this.flashEl = document.getElementById('screen-miss-flash');
     this.rageEl = document.getElementById('rage-aura-vignette');
 
+    this.queueEl = document.getElementById('meme-queue');
+    this.lastQueueKey = null;
     this.heroHp = document.getElementById('hero-hp-fill');
     this.enemyHp = document.getElementById('enemy-hp-fill');
     this.formChip = document.getElementById('form-chip');
@@ -152,6 +165,30 @@ export class RetroHud {
     }
     flushWord();
     this.promptDisplay.innerHTML = html;
+    this.renderQueue(promptManager);
+  }
+
+  renderQueue(p) {
+    const key = p.hasQueue() ? `${p.queuePos}|${p.currentItem ? p.currentItem.phrase : 'custom'}` : 'none';
+    if (key === this.lastQueueKey) return;
+    this.lastQueueKey = key;
+    if (!p.hasQueue()) {
+      this.queueEl.innerHTML = '';
+      return;
+    }
+    const row = (item, cls) => `
+      <div class="mq-item ${cls}">
+        ${item.clip && item.clip.thumb ? `<img src="assets/memes/${item.clip.thumb}" alt="" />` : '<div class="mq-nothumb"></div>'}
+        <div class="mq-text">
+          <span class="mq-phrase">${item.phrase}</span>
+          <span class="mq-move mq-${item.move}">${MOVE_LABELS[item.move] || ''}</span>
+        </div>
+      </div>`;
+    const now = p.currentItem
+      ? row(p.currentItem, 'now')
+      : '<div class="mq-item now"><div class="mq-text"><span class="mq-phrase">CUSTOM PHRASE</span><span class="mq-move mq-beam">BEAM FINISHER</span></div></div>';
+    this.queueEl.innerHTML =
+      '<div class="mq-title">MEME QUEUE</div>' + now + p.peek(3).map((it) => row(it, 'next')).join('');
   }
 
   updateMetrics(promptManager, comboEngine) {

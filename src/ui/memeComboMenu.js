@@ -10,12 +10,13 @@ const FORM_CHOICES = [
 ];
 
 export class MemeComboMenu {
-  constructor(container, arenaManager, promptManager, audioSystem, comboEngine) {
+  constructor(container, arenaManager, promptManager, audioSystem, comboEngine, memeReactions) {
     this.container = container;
     this.arena = arenaManager;
     this.prompt = promptManager;
     this.audio = audioSystem;
     this.combo = comboEngine;
+    this.memes = memeReactions;
     this.isOpen = false;
 
     this.createDomElements();
@@ -67,6 +68,37 @@ export class MemeComboMenu {
               <span class="tip-text">Auto powers up as your style rank climbs: A = gold, SS = blue, SSS = silver. CAPS LOCK or the backtick key forces at least gold.</span>
             </div>
 
+            <!-- Section: Attack guide -->
+            <div class="menu-section">
+              <label class="section-title">HOW ATTACKS WORK</label>
+              <div class="attack-guide">
+                <div><kbd>Type</kbd><span>Every correct letter throws a strike: jab, cross, punch in rotation. If you're out of reach the hero lunges in first. Every <b>4th hit in a row is a finisher kick</b> with big knockback.</span></div>
+                <div><kbd>SPACE</kbd><span><b>Air launch.</b> Uppercut sends the enemy flying and the hero floats up beside them. Keep typing to juggle, and each hit keeps them airborne.</span></div>
+                <div><kbd>ENTER</kbd><span><b>Ground slam.</b> On an airborne enemy it dives them into the floor for heavy damage, a shockwave and a crater. On the ground it's a quick sweep.</span></div>
+                <div><kbd>TAB</kbd><span><b>Dash.</b> Far away: closes the gap. Close: dodges back (or crosses over if you're cornered). Hit Tab just as the enemy swings for a <b>perfect dodge</b>, slow motion and bonus style.</span></div>
+                <div><kbd>Sentence</kbd><span>Finish a sentence to charge and fire the <b>beam finisher</b>.</span></div>
+                <div><kbd>CAPS / &#96;</kbd><span><b>Rage:</b> extra damage and at least Golden Rage form.</span></div>
+                <div><kbd>Typo</kbd><span>Drops your combo and invites an enemy counter-attack. Three in a row earns an apology meme.</span></div>
+              </div>
+              <span class="tip-text">Higher style rank = more damage and a stronger form: A gold, SS blue, SSS silver.</span>
+            </div>
+
+            <!-- Section: Meme Reactions -->
+            <div class="menu-section">
+              <label class="section-title">MEME REACTIONS</label>
+              <div class="form-row" id="meme-freq-row">
+                ${[['off', 'Off'], ['low', 'Rare'], ['normal', 'Normal'], ['chaos', 'Chaos']]
+                  .map(([key, label]) => `<button class="form-btn meme-freq-btn" data-freq="${key}">${label}</button>`)
+                  .join('')}
+                <button class="form-btn" id="meme-preview-btn">&#9654; Preview one</button>
+              </div>
+              <div class="slider-row">
+                <span>Meme Volume:</span>
+                <input type="range" id="vol-meme" min="0" max="100" value="80" />
+              </div>
+              <span class="tip-text">Clips pop up during the fight: KO laughs, typo apologies, power-up hype, time-skip cards when a new foe arrives.</span>
+            </div>
+
             <!-- Section 2: Custom Meme Phrase -->
             <div class="menu-section">
               <label class="section-title">CUSTOM PROMPT / MEME PHRASE</label>
@@ -115,7 +147,8 @@ export class MemeComboMenu {
     this.customInput = document.getElementById('custom-phrase-input');
     this.arenaBtns = this.menuRoot.querySelectorAll('.arena-btn');
     this.phraseTags = this.menuRoot.querySelectorAll('.phrase-tag');
-    this.formBtns = this.menuRoot.querySelectorAll('.form-btn');
+    this.formBtns = this.menuRoot.querySelectorAll('.form-btn:not(.meme-freq-btn):not(#meme-preview-btn)');
+    this.memeFreqBtns = this.menuRoot.querySelectorAll('.meme-freq-btn');
   }
 
   bindEvents() {
@@ -149,6 +182,26 @@ export class MemeComboMenu {
         if (this.combo) this.combo.setFormOverride(btn.dataset.form);
       });
     });
+
+    // Meme reactions: frequency, volume, preview
+    if (this.memes) {
+      const syncFreq = () =>
+        this.memeFreqBtns.forEach((b) => b.classList.toggle('active', b.dataset.freq === this.memes.frequency));
+      syncFreq();
+      this.memeFreqBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.memes.setFrequency(btn.dataset.freq);
+          syncFreq();
+        });
+      });
+      const memeVol = document.getElementById('vol-meme');
+      memeVol.value = Math.round(this.memes.volume * 100);
+      memeVol.addEventListener('input', (e) => this.memes.setVolume(e.target.value / 100));
+      document.getElementById('meme-preview-btn').addEventListener('click', () => {
+        this.close();
+        this.memes.trigger('misc', { priority: 3, force: true });
+      });
+    }
 
     // Custom phrase application
     document.getElementById('apply-phrase-btn').addEventListener('click', () => {

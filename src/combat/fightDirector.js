@@ -26,6 +26,7 @@ export class FightDirector {
     this.dustTimer = 0;
     this.sinceHeroHurt = 99;
     this.enemyNumber = 1;
+    this.memes = null; // meme reaction player, set by the app
 
     combo.onMiss = () => this.punish();
   }
@@ -129,6 +130,7 @@ export class FightDirector {
     if (h.invulnTimer > 0) {
       // Dodged: reward with style and a beat of slow motion.
       this.fx.floatText('PERFECT DODGE!', h.x, 2.7, { color: '#9be8ff', size: 30, cls: 'fx-pop' });
+      if (this.memes) this.memes.trigger('dodge', { priority: 2, side: 'left' });
       this.combo.addStylePoints(25);
       this.combo.slowTimer = Math.max(this.combo.slowTimer, 0.35);
       this.fx.afterimage(h, '#9be8ff');
@@ -146,6 +148,7 @@ export class FightDirector {
     this.arena.triggerScreenShake(0.3);
     this.fx.hitSpark(cx, 1.15, { size: 1, color: 0xff6a6a });
     this.fx.flash('#ff2020', 0.22, 0.25);
+    if (this.memes) this.memes.trigger('hurt', { priority: 1, chance: 0.5, side: 'left' });
     if (res.ko) this.heroDownTimer = 0;
   }
 
@@ -163,6 +166,7 @@ export class FightDirector {
     e.x = Math.max(h.x + 5, edge);
     e.facing = -1;
     this.entering = true;
+    if (this.memes) this.memes.trigger(Math.random() < 0.5 ? 'timeskip' : 'enter', { priority: 2, chance: 0.85, side: 'right' });
     this.attackCooldown = 2.5;
     this.attack = null;
   }
