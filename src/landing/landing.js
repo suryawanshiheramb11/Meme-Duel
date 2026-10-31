@@ -33,6 +33,7 @@ const GAME_MODULES = [
   'src/ui/memeReactions.js',
   'src/ui/memeComboMenu.js',
   'src/ui/modeSelect.js',
+  'src/ui/arenaPicker.js',
   'src/ui/retroHud.js',
   'src/ui/onlineLobby.js',
   'src/net/netSession.js',

@@ -86,7 +86,7 @@ On the start screen, **1 / 2 / 3** pick Easy / Medium / Hard (or click a card, o
 
 ### Rounds, health and the fatality
 
-A match is **first to two round wins** (best of three). Every round opens with a 7-second introduction ("ROUND 1 begins", "ROUND 2 begins again", and a red-lit "FINAL ROUND" when it is 1-1), a 3-2-1 countdown, then **FIGHT!**. Each round is fought in a different arena. Fighters carry 2.4x the old health, so a round is a real fight rather than a few combos. A round ends on a KO, or when the 90-second clock runs out and whoever has more health left takes it. Between rounds the loser gets hit with *Emotional Damage*.
+A match is **first to two round wins** (best of three). Every round opens with a 7-second introduction ("ROUND 1 begins", "ROUND 2 begins again", and a red-lit "FINAL ROUND" when it is 1-1), a 3-2-1 countdown, then **FIGHT!**. The arena is picked before the fight (on the start screen, or in the online lobby, where the host's choice is used) and stays for the whole match. Fighters carry 2.4x the old health, so a round is a real fight rather than a few combos. A round ends on a KO, or when the 90-second clock runs out and whoever has more health left takes it. Between rounds the loser gets hit with *Emotional Damage*.
 
 Win the deciding round by KO and the screen says **FINISH HIM!**. You have six seconds to tap the fatality code: **↓ ↓ → ← then Shift**. A meme-card storm (or a beam) then blows your opponent into paper confetti. Miss the window and you still win, just without the style points. A round won without taking damage is a **FLAWLESS VICTORY**.
 

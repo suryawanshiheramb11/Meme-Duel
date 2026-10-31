@@ -852,21 +852,42 @@ html, body {
 
 /* The typing paper sits a little lower, and the next key rises from the bottom */
 #floating-prompt-container { top: 150px; }
-#next-key {
-  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 24; pointer-events: none;
-  display: flex; align-items: flex-end; gap: 12px;
+#key-stream {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 0; z-index: 24; pointer-events: none;
 }
-#next-key.idle { opacity: 0; }
-.nk-cap {
-  display: flex; align-items: center; justify-content: center; min-width: 46px; height: 46px; padding: 0 12px;
-  font-family: var(--font-display); font-size: 30px; line-height: 1; color: #08080b; background: #ecedf1;
-  box-shadow: 4px 4px 0 #000;
-  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+.kc {
+  position: absolute; left: 50%; bottom: clamp(70px, 11vh, 120px); display: flex; align-items: center; justify-content: center;
+  min-width: clamp(44px, 7vh, 72px); height: clamp(44px, 7vh, 72px); padding: 0 12px; box-sizing: border-box;
+  font-family: var(--font-display); font-size: clamp(28px, 4.6vh, 48px); line-height: 1; color: #08080b; background: #ffd23a;
+  transform: translateX(-50%); text-shadow: none; filter: drop-shadow(4px 4px 0 #000);
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
+  animation: kc-slide 0.62s cubic-bezier(.2, .9, .3, 1) forwards;
 }
-.nk-cap.wide { min-width: 120px; font-size: 22px; letter-spacing: 3px; }
-.nk-ghost { opacity: 0.45; transform: scale(0.8); transform-origin: bottom left; }
-.nk-main { min-width: 78px; height: 78px; font-size: 54px; background: #ffd23a; }
-.nk-main.wide { min-width: 200px; font-size: 34px; }
-.nk-main.rise { animation: nk-rise 0.26s cubic-bezier(.2, 1.3, .4, 1); }
-@keyframes nk-rise { from { transform: translateY(120px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@media (max-height: 700px) { #next-key { bottom: 84px; } .nk-main { height: 62px; min-width: 62px; font-size: 42px; } }
+.kc.wide { font-size: clamp(20px, 3vh, 30px); letter-spacing: 3px; padding: 0 22px; }
+.kc.bad { background: #ecedf1; color: #6a7080; }
+@keyframes kc-slide {
+  0% { transform: translate(-50%, 140px); opacity: 0; }
+  35% { transform: translate(-50%, 0); opacity: 1; }
+  100% { transform: translate(-50%, -34px); opacity: 0; }
+}
+
+
+/* Arena picker (start screen and online lobby) */
+.ap { margin: 16px auto 0; max-width: 860px; }
+.ap-label { margin: 0 0 8px; font-family: var(--font-display); font-size: 20px; letter-spacing: 3px; color: #9aa4b8; text-align: left; }
+.ap-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.ap-btn {
+  cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 4px 4px 5px; text-align: center;
+  font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: #ecedf1;
+  background: rgba(8, 10, 18, 0.8); border: 2px solid rgba(255, 255, 255, 0.35);
+}
+.ap-btn:hover { border-color: #fff; }
+.ap-btn.active { border-color: #ffd23a; color: #ffd23a; box-shadow: 3px 3px 0 #000; }
+.ap-thumb { display: block; width: 100%; aspect-ratio: 16 / 9; background-size: cover; background-position: center; }
+.ap-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-height: 760px) { .ap { margin-top: 8px; } .ap-label { font-size: 16px; margin-bottom: 4px; } }
+
+/* Control hints: sharp, never double-struck (the label shadow must not reach the key caps) */
+.k-chip kbd { text-shadow: none; font-size: clamp(10px, 1.5vh, 12px); }
+.k-chip { font-size: clamp(10px, 1.6vh, 12px); }
+#keybind-guide-bar { left: clamp(200px, 26vw, 340px); }

@@ -14,6 +14,7 @@ import { PerfMonitor } from './perfMonitor.js';
 import { loadDifficulty } from '../combat/difficulty.js';
 import { InputManager } from './inputManager.js';
 import { Match } from '../combat/match.js';
+import { createArenaPicker, loadArena } from '../ui/arenaPicker.js';
 import { OnlineLobby } from '../ui/onlineLobby.js';
 import { Versus } from '../net/versus.js';
 
@@ -49,7 +50,7 @@ export class App {
       this.pendingMusic = MUSIC[key] || MUSIC.desk;
       if (this.audioStarted) this.audio.playMusic(this.pendingMusic);
     };
-    this.arena.switchArena(this.arena.currentArenaKey);
+    this.arena.switchArena(loadArena() || this.arena.currentArenaKey);
 
     // 3. Animated paper-cutout fighters
     this.hero = new PaperStandee(true, this.arena.scene);
@@ -171,6 +172,7 @@ export class App {
       this.director.setDifficulty(level);
       this.match.start();
     });
+    this.modeSelect.addArenaPicker(createArenaPicker(this.arena, { label: 'ARENA: where you fight' }));
     this.input.blockers.push(this.modeSelect); // only the menu and the mode picker capture the keyboard; memes never do
 
     // Online play: skip the bot picker and open the lobby instead
@@ -180,6 +182,7 @@ export class App {
       this.modeSelect.root.remove();
       this.lobby = new OnlineLobby(this.container, {
         invite: launch.room,
+        arenaPicker: createArenaPicker(this.arena, { label: 'ARENA: used when you host the match' }),
         onSession: (session) => {
           this.versus = new Versus(this, session);
         }

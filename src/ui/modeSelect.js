@@ -63,6 +63,10 @@ export class ModeSelect {
     window.addEventListener('keydown', (e) => this.onKey(e), true);
   }
 
+  addArenaPicker(el) {
+    this.root.querySelector('.ms-grid').insertAdjacentElement('afterend', el);
+  }
+
   highlight(level) {
     this.selected = level;
     this.cards.forEach((c) => c.classList.toggle('active', c.dataset.level === level));

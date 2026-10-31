@@ -2,7 +2,7 @@
 import { quickMatch, createRoom, joinRoom, cleanCode } from '../net/netSession.js';
 
 export class OnlineLobby {
-  constructor(container, { onSession, invite }) {
+  constructor(container, { onSession, invite, arenaPicker }) {
     this.onSession = onSession;
     this.cancelled = false;
     this.pending = null; // the room being hosted, if any
@@ -41,6 +41,7 @@ export class OnlineLobby {
       </div>`;
     container.appendChild(this.root);
 
+    if (arenaPicker) this.root.querySelector('.ol-grid').insertAdjacentElement('afterend', arenaPicker);
     this.statusEl = this.root.querySelector('#ol-status');
     this.codeEl = this.root.querySelector('#ol-code');
     this.copyEl = this.root.querySelector('#ol-copy');

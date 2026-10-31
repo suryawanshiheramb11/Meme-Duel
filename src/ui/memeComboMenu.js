@@ -2,6 +2,7 @@
 import { ARENAS } from '../render/arenas/arenaManager.js';
 import { DIFFICULTIES } from '../combat/difficulty.js';
 import { SECRETS } from '../combat/secrets.js';
+import { saveArena } from './arenaPicker.js';
 
 const FORM_CHOICES = [
   ['auto', 'Auto (by rank)'],
@@ -239,6 +240,7 @@ export class MemeComboMenu {
         this.arenaBtns.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         this.arena.switchArena(arenaKey);
+        saveArena(arenaKey);
       });
     });
 

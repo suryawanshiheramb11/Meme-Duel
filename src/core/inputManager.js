@@ -115,6 +115,7 @@ export class InputManager {
         // Space advances the prompt!
         this.audio.playKeyClack(false);
         this.prompt.handleKeyPress(' ');
+        this.hud.flashKey('SPACE');
         this.combo.registerHit('heavy', this.hero, this.enemy);
         this.hud.updatePrompt(this.prompt);
       } else {
@@ -128,6 +129,7 @@ export class InputManager {
     if (key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       const result = this.prompt.handleKeyPress(key);
+      this.hud.flashKey(key.toUpperCase(), result.status === 'good' || result.status === 'sentence_complete');
 
       if (result.status === 'good' || result.status === 'sentence_complete') {
         this.audio.playKeyClack(false);

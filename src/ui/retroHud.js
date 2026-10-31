@@ -42,12 +42,8 @@ export class RetroHud {
         </div>
       </div>
 
-      <!-- The key you need next rises up from the bottom of the screen -->
-      <div id="next-key" aria-hidden="true">
-        <span class="nk-cap nk-main"></span>
-        <span class="nk-cap nk-ghost" id="nk-g1"></span>
-        <span class="nk-cap nk-ghost" id="nk-g2"></span>
-      </div>
+      <!-- Every key you press slides up from the bottom centre -->
+      <div id="key-stream" aria-hidden="true"></div>
 
       <!-- Combo & DMC Style Rank Widget (Right Side) -->
       <div id="style-rank-widget">
@@ -117,11 +113,7 @@ export class RetroHud {
     this.memeChipFill = this.memeChip.querySelector('.chip-fill');
     this.queueEl = document.getElementById('meme-queue');
     this.lastQueueKey = null;
-    this.nextKey = document.getElementById('next-key');
-    this.nkMain = this.nextKey.querySelector('.nk-main');
-    this.nkG1 = document.getElementById('nk-g1');
-    this.nkG2 = document.getElementById('nk-g2');
-    this.lastNext = null;
+    this.keyStream = document.getElementById('key-stream');
     this.heroHp = document.getElementById('hero-hp-fill');
     this.enemyHp = document.getElementById('enemy-hp-fill');
     this.formChip = document.getElementById('form-chip');
@@ -216,30 +208,17 @@ export class RetroHud {
       '<div class="mq-title">MEME QUEUE</div>' + now + p.peek(3).map((it) => row(it, 'next')).join('');
   }
 
-  // Shows the character to type next (and the two after it) as key caps; the main one rises in on every change
-  updateNextKey(prompt) {
-    const text = prompt.currentText;
-    const i = prompt.charIndex;
-    const key = `${text}|${i}`;
-    if (key === this.lastNext) return;
-    this.lastNext = key;
-    const label = (c) => (c === undefined ? '' : c === ' ' ? 'SPACE' : c);
-    const cur = text[i];
-    this.nextKey.classList.toggle('idle', cur === undefined);
-    this.nkMain.textContent = label(cur);
-    this.nkMain.classList.toggle('wide', cur === ' ');
-    this.nkG1.textContent = label(text[i + 1]);
-    this.nkG1.classList.toggle('wide', text[i + 1] === ' ');
-    this.nkG2.textContent = label(text[i + 2]);
-    this.nkG2.classList.toggle('wide', text[i + 2] === ' ');
-    // restart the rise animation
-    this.nkMain.classList.remove('rise');
-    void this.nkMain.offsetWidth;
-    this.nkMain.classList.add('rise');
+  // The key you just pressed slides up from the bottom centre and fades out above the keybind strip
+  flashKey(label, ok = true) {
+    const cap = document.createElement('span');
+    cap.className = `kc${ok ? '' : ' bad'}${label.length > 1 ? ' wide' : ''}`;
+    cap.textContent = label;
+    this.keyStream.appendChild(cap);
+    while (this.keyStream.children.length > 6) this.keyStream.firstChild.remove();
+    cap.addEventListener('animationend', () => cap.remove());
   }
 
   updateMetrics(promptManager, comboEngine) {
-    this.updateNextKey(promptManager);
     // Bottom-Left Steam HUD
     this.goodEl.textContent = promptManager.goodCount;
     this.missEl.textContent = promptManager.missCount;

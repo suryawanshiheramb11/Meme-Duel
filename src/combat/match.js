@@ -4,7 +4,6 @@
 const ROUNDS_TO_WIN = 2;
 const ROUND_SECONDS = 90;
 const INTRO_SECONDS = 7.2; // announcement, 3-2-1, FIGHT: a proper breather before every round
-const ARENA_POOL = ['wasteland', 'dojo', 'cyber', 'lava', 'space', 'meadow', 'crt', 'sketchpad', 'desk'];
 const BETWEEN_SECONDS = 3.2;
 const FINISH_SECONDS = 6;
 const FATALITY_CODE = ['ArrowDown', 'ArrowDown', 'ArrowRight', 'ArrowLeft', 'Shift'];
@@ -135,16 +134,11 @@ export class Match {
     this.beginRound(1);
   }
 
-  pickArena() {
-    const pool = ARENA_POOL.filter((k) => k !== this.arena.currentArenaKey);
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-
   beginRound(n, arenaKey) {
     this.round = n;
     this.introStep = '';
-    // every round is fought somewhere new (the online host picks, the guest follows)
-    const key = arenaKey || (n > 1 ? this.pickArena() : this.arena.currentArenaKey);
+    // the arena is chosen before the match and stays; an online guest follows the host's choice
+    const key = arenaKey || this.arena.currentArenaKey;
     if (key !== this.arena.currentArenaKey) this.arena.switchArena(key);
     this.state = 'intro';
     this.timer = INTRO_SECONDS;
