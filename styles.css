@@ -173,7 +173,7 @@ html, body {
 }
 
 #steam-hud-metrics .hud-item .lbl {
-  color: #00f0ff;
+  color: #ffd23a;
   font-size: 14px;
   margin-left: 2px;
 }
@@ -196,16 +196,14 @@ html, body {
 #steam-progress-track {
   width: 280px;
   height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
   overflow: hidden;
 }
 
 #steam-progress-fill {
   width: 0%;
   height: 100%;
-  background: linear-gradient(90deg, #00f0ff, #00ff88);
-  box-shadow: 0 0 10px #00f0ff;
+  background: #ffd23a;
   transition: width 0.1s ease-out;
 }
 
@@ -836,3 +834,17 @@ html, body {
 .bar-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 18px; }
 #enemy-kos { font-size: 14px; }
 #floating-prompt-container { top: 124px; }
+
+
+/* Control hints: the game's ink-and-paper key caps (no blue) */
+#keybind-guide-bar {
+  left: 340px; right: 20px; transform: none; bottom: 20px;
+  justify-content: center; flex-wrap: wrap; gap: 8px 16px;
+}
+.k-chip { font-family: var(--font-mono); font-size: 12px; font-weight: bold; color: #ecedf1; letter-spacing: 1px; text-shadow: 0 2px 0 #000; white-space: nowrap; }
+.k-chip kbd {
+  background: #ecedf1; color: #08080b; border: 0; border-radius: 0; padding: 3px 7px; font-size: 11px; font-weight: bold;
+  font-family: var(--font-mono); box-shadow: 2px 2px 0 #000;
+  clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 4px 100%, 0 calc(100% - 4px));
+}
+#chip-meme { padding-right: 4px; }
