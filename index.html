@@ -3,9 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Keyboard Warrior Stickman: Typing Beat 'Em Up</title>
+  <meta name="theme-color" content="#07090e">
+  <title>Meme Duel: Typing Beat 'Em Up</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307090e'/%3E%3Ctext x='32' y='46' font-size='38' font-family='Impact,sans-serif' font-weight='700' text-anchor='middle' fill='%23ffd23a'%3EMD%3C/text%3E%3C/svg%3E">
+  <meta name="description" content="Type the meme, beat the bot. A typing beat 'em up with animated paper stickmen, power-up auras and meme specials.">
+
+  <!-- Fonts load without blocking first paint; the CSS falls back to system fonts until they arrive -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Teko:wght@700&family=Permanent+Marker&family=VT323&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Teko:wght@700&family=Permanent+Marker&family=VT323&display=swap"></noscript>
+
   <link rel="stylesheet" href="styles.css">
-  
+
   <!-- Import map for modern standard ES modules without bundler -->
   <script type="importmap">
   {
@@ -14,6 +24,26 @@
     }
   }
   </script>
+
+  <!-- Fetch the engine and every game module in parallel instead of one import at a time -->
+  <link rel="modulepreload" href="./assets/libs/three.module.js">
+  <link rel="modulepreload" href="./assets/libs/three.core.js">
+  <link rel="modulepreload" href="./src/combat/comboEngine.js">
+  <link rel="modulepreload" href="./src/combat/difficulty.js">
+  <link rel="modulepreload" href="./src/combat/fightDirector.js">
+  <link rel="modulepreload" href="./src/combat/promptManager.js">
+  <link rel="modulepreload" href="./src/core/app.js">
+  <link rel="modulepreload" href="./src/core/audioSystem.js">
+  <link rel="modulepreload" href="./src/core/inputManager.js">
+  <link rel="modulepreload" href="./src/core/perfMonitor.js">
+  <link rel="modulepreload" href="./src/render/arenas/arenaManager.js">
+  <link rel="modulepreload" href="./src/render/effects/effectsManager.js">
+  <link rel="modulepreload" href="./src/render/stickman/paperStandee.js">
+  <link rel="modulepreload" href="./src/render/stickman/stickmanRig.js">
+  <link rel="modulepreload" href="./src/ui/memeComboMenu.js">
+  <link rel="modulepreload" href="./src/ui/memeReactions.js">
+  <link rel="modulepreload" href="./src/ui/modeSelect.js">
+  <link rel="modulepreload" href="./src/ui/retroHud.js">
 </head>
 <body>
   <!-- Three.js 3D Viewport & UI Root -->

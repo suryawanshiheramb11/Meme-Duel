@@ -67,6 +67,8 @@ export class ComboEngine {
     this.enemy = null;
     this.onMiss = null;
     this.memes = null; // meme reaction player, set by the app
+    this.difficulty = null; // current bot level table, set by the fight director
+    this.difficultyKey = 'medium';
     this.missStreak = 0;
     this.lastMissAt = 0;
 
@@ -108,7 +110,8 @@ export class ComboEngine {
 
     const multiplier = 1 + this.currentRankIndex * 0.5;
     const baseScore = type === 'crit' ? 300 : type === 'heavy' ? 150 : 80;
-    this.score += Math.round(baseScore * multiplier * (this.isRageMode ? 2 : 1));
+    const scoreMul = this.difficulty ? this.difficulty.score : 1;
+    this.score += Math.round(baseScore * multiplier * (this.isRageMode ? 2 : 1) * scoreMul);
 
     const addedStyle = type === 'crit' ? 35 : type === 'heavy' ? 22 : 12;
     this.addStylePoints(addedStyle);
@@ -127,6 +130,15 @@ export class ComboEngine {
     const kind = finisher ? 'kick' : type;
     hero.attack(kind);
 
+    // Hard bots sometimes sidestep a plain strike (specials and word bonuses always connect)
+    if (this.difficulty && this.difficulty.dodge > 0 && !enemy.isAirborne && enemy.pose !== 'hurt' && Math.random() < this.difficulty.dodge) {
+      const away = Math.sign(enemy.x - hero.x) || 1;
+      enemy.slideTo(Math.max(-6, Math.min(6, enemy.x + away * 1.1)), 26);
+      this.fx.afterimage(enemy, '#ff9a9a', 0.3);
+      this.fx.floatText('TOO SLOW', enemy.x, enemy.y + 2.3, { color: '#ff9a9a', size: 26, cls: 'fx-pop' });
+      return;
+    }
+
     const base = type === 'crit' ? 14 : type === 'heavy' ? 9 : 6;
     const knock = finisher ? 1.15 : type === 'heavy' ? 0.55 : 0.26;
     const result = enemy.takeHit(base * this.damageMultiplier() * (finisher ? 1.6 : 1), { knock });
@@ -142,7 +154,7 @@ export class ComboEngine {
       color: this.sparkColor(),
       count: finisher ? 12 : 7
     });
-    this.hitStop = Math.max(this.hitStop, finisher ? 0.085 : 0.04);
+    this.hitStop = Math.max(this.hitStop, finisher ? 0.06 : 0.03);
     if (finisher) {
       this.arena.punchZoom(0.45);
       this.arena.triggerScreenShake(0.3);
@@ -352,8 +364,8 @@ export class ComboEngine {
 
   onKO(enemy, hero) {
     this.kills++;
-    this.score += 1000;
-    this.slowTimer = 0.55;
+    this.score += Math.round(1000 * (this.difficulty ? this.difficulty.score : 1));
+    this.slowTimer = 0.4;
     this.audio.playSound('knockdown');
     this.arena.triggerScreenShake(0.8);
     this.arena.punchZoom(0.9);

@@ -2,7 +2,6 @@
    Keyboard Warrior Stickman - Authentic Steam 2.5D Beat 'Em Up Styling
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Teko:wght@700&family=Permanent+Marker&family=VT323&display=swap');
 
 :root {
   --font-mono: 'Share Tech Mono', monospace, 'Courier New';
@@ -948,3 +947,98 @@ html, body {
 @media (max-width: 760px) {
   #meme-queue { display: none; }
 }
+
+/* ==========================================================================
+   Start screen: difficulty picker
+   ========================================================================== */
+#mode-select {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  background: radial-gradient(ellipse at 50% 35%, rgba(20, 24, 44, 0.78), rgba(4, 6, 12, 0.94));
+  backdrop-filter: blur(6px);
+  transition: opacity 0.3s ease;
+}
+#mode-select.closing { opacity: 0; pointer-events: none; }
+
+.ms-wrap { width: min(980px, 100%); text-align: center; }
+.ms-title {
+  font-family: var(--font-display);
+  font-size: clamp(54px, 9vw, 104px);
+  letter-spacing: 8px;
+  line-height: 1;
+  background: linear-gradient(180deg, #fff6c2, #ffcf3a 55%, #ff7a1a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 22px rgba(255, 170, 40, 0.45));
+}
+.ms-sub { margin: 8px 0 22px; color: #b9c8dc; font-size: clamp(13px, 1.6vw, 16px); letter-spacing: 1px; }
+
+.ms-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+.ms-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px 16px 16px;
+  text-align: left;
+  font-family: var(--font-mono);
+  color: #dbe6f5;
+  background: rgba(14, 20, 34, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ms-card:hover, .ms-card.active { transform: translateY(-4px); }
+.ms-easy { --lvl: #5dff9a; }
+.ms-medium { --lvl: #ffd23a; }
+.ms-hard { --lvl: #ff4a5a; }
+.ms-card.active { border-color: var(--lvl); box-shadow: 0 0 0 1px var(--lvl), 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 26px color-mix(in srgb, var(--lvl) 45%, transparent); }
+
+.ms-key {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  min-width: 24px;
+  padding: 2px 7px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #0b0f18;
+  background: var(--lvl);
+  border-radius: 5px;
+}
+.ms-level { font-family: var(--font-display); font-size: 42px; line-height: 1; letter-spacing: 3px; color: var(--lvl); text-shadow: 0 2px 0 #000; }
+.ms-name { font-size: 12px; font-weight: bold; letter-spacing: 2px; color: #fff; }
+.ms-blurb { font-size: 12px; line-height: 1.5; color: #a9bad0; min-height: 54px; }
+.ms-stats { width: 100%; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.ms-stat { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; }
+.ms-stat-label { font-size: 9px; letter-spacing: 1.5px; color: #8498b2; }
+.ms-bar { height: 7px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; }
+.ms-bar > span { display: block; height: 100%; background: var(--lvl); border-radius: 4px; }
+
+.ms-hint { margin-top: 20px; color: #7f93ad; font-size: 12px; }
+.ms-hint b { color: #ffd23a; }
+
+@media (max-width: 760px) {
+  .ms-grid { grid-template-columns: 1fr; gap: 10px; }
+  .ms-card { padding: 12px 14px; }
+  .ms-level { font-size: 32px; }
+  .ms-blurb { min-height: 0; }
+}
+
+/* difficulty label next to the foe's name */
+#enemy-name[data-level="easy"] { color: #5dff9a; }
+#enemy-name[data-level="medium"] { color: #ffd23a; }
+#enemy-name[data-level="hard"] { color: #ff6a78; }
+.diff-btn.active[data-level="easy"] { border-color: #5dff9a; }
+.diff-btn.active[data-level="hard"] { border-color: #ff4a5a; }

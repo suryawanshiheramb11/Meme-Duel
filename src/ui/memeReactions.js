@@ -58,6 +58,7 @@ export class MemeReactions {
     this.lastEnd = 0;
     this.musicBase = null; // the real music volume, held while clips duck it
     this.restoreTimer = null;
+    this.prefetched = new Set();
     this.playId = 0; // identifies the current play attempt so a stale failure can't mute a newer clip
     this.stats = { played: 0, skipped: 0 };
 
@@ -165,6 +166,28 @@ export class MemeReactions {
     if (!clip) return false;
     this.play(clip, { priority, side, tag });
     return true;
+  }
+
+  // Fetch clips into the HTTP cache so they start instantly. Skipped on data-saver connections.
+  prefetch(files) {
+    const conn = navigator.connection;
+    if (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))) return;
+    for (const file of files) {
+      if (this.prefetched.has(file)) continue;
+      this.prefetched.add(file);
+      fetch(`assets/memes/${file}`, { cache: 'force-cache', priority: 'low' }).catch(() => this.prefetched.delete(file));
+    }
+  }
+
+  // After the first seconds of play, quietly pull in the remaining clips one at a time.
+  prefetchAllWhenIdle() {
+    const queue = this.clips.map((c) => c.file).filter((f) => !this.prefetched.has(f));
+    const next = () => {
+      if (!queue.length) return;
+      this.prefetch([queue.shift()]);
+      setTimeout(next, 450);
+    };
+    setTimeout(next, 4000);
   }
 
   // Play one specific clip (the meme whose catchphrase was just typed), captioned with it.

@@ -1,5 +1,6 @@
 // Keyboard Warrior Stickman - Authentic "Meme Combo Maker" & Arena Switcher Menu
 import { ARENAS } from '../render/arenas/arenaManager.js';
+import { DIFFICULTIES } from '../combat/difficulty.js';
 
 const FORM_CHOICES = [
   ['auto', 'Auto (by rank)'],
@@ -10,13 +11,15 @@ const FORM_CHOICES = [
 ];
 
 export class MemeComboMenu {
-  constructor(container, arenaManager, promptManager, audioSystem, comboEngine, memeReactions) {
+  constructor(container, arenaManager, promptManager, audioSystem, comboEngine, memeReactions, director, perfMonitor) {
     this.container = container;
     this.arena = arenaManager;
     this.prompt = promptManager;
     this.audio = audioSystem;
     this.combo = comboEngine;
     this.memes = memeReactions;
+    this.director = director;
+    this.perf = perfMonitor;
     this.isOpen = false;
 
     this.createDomElements();
@@ -41,6 +44,17 @@ export class MemeComboMenu {
           </div>
 
           <div class="modal-body">
+            <!-- Section: Difficulty -->
+            <div class="menu-section">
+              <label class="section-title">BOT DIFFICULTY</label>
+              <div class="form-row">
+                ${Object.entries(DIFFICULTIES)
+                  .map(([key, d]) => `<button class="form-btn diff-btn" data-level="${key}" title="${d.blurb}">${d.label} &middot; ${d.name}</button>`)
+                  .join('')}
+              </div>
+              <span class="tip-text" id="diff-blurb"></span>
+            </div>
+
             <!-- Section 1: Choose Arena -->
             <div class="menu-section">
               <label class="section-title">SELECT ARENA / STAGE</label>
@@ -119,6 +133,17 @@ export class MemeComboMenu {
               </div>
             </div>
 
+            <!-- Section: Graphics -->
+            <div class="menu-section">
+              <label class="section-title">GRAPHICS</label>
+              <div class="form-row">
+                ${[['auto', 'Auto'], ['high', 'High'], ['low', 'Low (lightest)']]
+                  .map(([key, label]) => `<button class="form-btn gfx-btn" data-gfx="${key}">${label}</button>`)
+                  .join('')}
+              </div>
+              <span class="tip-text">Auto lowers effects and resolution if your device struggles, and raises them again when it can.</span>
+            </div>
+
             <!-- Section 3: Audio Settings -->
             <div class="menu-section">
               <label class="section-title">AUDIO & JUICE SETTINGS</label>
@@ -147,7 +172,9 @@ export class MemeComboMenu {
     this.customInput = document.getElementById('custom-phrase-input');
     this.arenaBtns = this.menuRoot.querySelectorAll('.arena-btn');
     this.phraseTags = this.menuRoot.querySelectorAll('.phrase-tag');
-    this.formBtns = this.menuRoot.querySelectorAll('.form-btn:not(.meme-freq-btn):not(#meme-preview-btn)');
+    this.formBtns = this.menuRoot.querySelectorAll('.form-btn[data-form]');
+    this.diffBtns = this.menuRoot.querySelectorAll('.diff-btn');
+    this.gfxBtns = this.menuRoot.querySelectorAll('.gfx-btn');
     this.memeFreqBtns = this.menuRoot.querySelectorAll('.meme-freq-btn');
   }
 
@@ -173,6 +200,27 @@ export class MemeComboMenu {
         this.arena.switchArena(arenaKey);
       });
     });
+
+    // Bot difficulty
+    this.diffBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (this.director) this.director.setDifficulty(btn.dataset.level);
+        this.syncDifficulty();
+      });
+    });
+    this.syncDifficulty();
+
+    // Graphics quality
+    if (this.perf) {
+      const syncGfx = () => this.gfxBtns.forEach((b) => b.classList.toggle('active', b.dataset.gfx === this.perf.mode));
+      syncGfx();
+      this.gfxBtns.forEach((btn) =>
+        btn.addEventListener('click', () => {
+          this.perf.setMode(btn.dataset.gfx);
+          syncGfx();
+        })
+      );
+    }
 
     // Power form picker
     this.formBtns.forEach((btn) => {
@@ -248,7 +296,16 @@ export class MemeComboMenu {
     }
   }
 
+  syncDifficulty() {
+    if (!this.director) return;
+    const key = this.director.diffKey;
+    this.diffBtns.forEach((b) => b.classList.toggle('active', b.dataset.level === key));
+    const blurb = document.getElementById('diff-blurb');
+    if (blurb) blurb.textContent = `${DIFFICULTIES[key].label}: ${DIFFICULTIES[key].blurb}`;
+  }
+
   open() {
+    this.syncDifficulty();
     this.isOpen = true;
     this.modal.classList.remove('hidden');
     this.customInput.focus();

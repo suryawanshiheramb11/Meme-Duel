@@ -41,8 +41,14 @@ export class ArenaManager {
     this.textureCache = new Map();
     this.onArenaChange = null;
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', alpha: false });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Antialiasing is wasted work on high-DPI screens, where the pixel ratio already smooths edges
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: (window.devicePixelRatio || 1) < 1.75,
+      powerPreference: 'high-performance',
+      alpha: false
+    });
+    this.pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.renderer.setPixelRatio(this.pixelRatio);
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -78,6 +84,13 @@ export class ArenaManager {
     const scale = Math.max(needW / 16, visH / 9);
     this.bgMesh.scale.set(scale, scale, 1);
     this.bgMesh.position.y = this.camY;
+  }
+
+  setPixelRatio(ratio) {
+    if (Math.abs(ratio - this.pixelRatio) < 0.01) return;
+    this.pixelRatio = ratio;
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
   resize() {

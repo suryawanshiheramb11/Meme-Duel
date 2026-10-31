@@ -9,7 +9,8 @@
     "build:app": "node scripts/package.js",
     "test": "node test/verify_clone.js",
     "generate:arenas": "node scripts/generate_arenas.js",
-    "fetch:memes": "node scripts/fetch_memes.js"
+    "fetch:memes": "node scripts/fetch_memes.js",
+    "build:web": "node scripts/build_web.js"
   },
   "keywords": [
     "typing",

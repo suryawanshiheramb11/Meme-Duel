@@ -126,9 +126,11 @@ export class RetroHud {
       this.formChip.style.borderColor = FORM_COLORS[combo.form];
       this.formChip.classList.toggle('powered', combo.form !== 'base');
     }
-    if (director.enemyNumber !== this.lastEnemyNumber) {
-      this.lastEnemyNumber = director.enemyNumber;
-      this.enemyName.textContent = `FOE #${director.enemyNumber}`;
+    const nameKey = `${director.enemyNumber}|${director.diffKey}`;
+    if (nameKey !== this.lastEnemyNumber) {
+      this.lastEnemyNumber = nameKey;
+      this.enemyName.textContent = `FOE #${director.enemyNumber} \u00b7 ${director.diff.label}`;
+      this.enemyName.dataset.level = director.diffKey;
     }
     this.enemyKos.textContent = `KO ${combo.kills}`;
   }

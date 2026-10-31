@@ -24,7 +24,7 @@ console.log('KEYBOARD WARRIOR STICKMAN: 1:1 CLONE VERIFICATION');
 console.log('====================================================\n');
 
 // 1. Core Architecture & Modules
-console.log('[1/7] Verifying 1:1 Engine Architecture & Source Modules...');
+console.log('[1/9] Verifying 1:1 Engine Architecture & Source Modules...');
 const requiredFiles = [
   'index.html',
   'styles.css',
@@ -53,7 +53,7 @@ for (const rel of requiredFiles) {
 }
 
 // 2. Generated arena backdrops & paper texture
-console.log('\n[2/7] Verifying Generated Arena Backdrops...');
+console.log('\n[2/9] Verifying Generated Arena Backdrops...');
 const arenaFiles = ['desk', 'crt', 'meadow', 'sketchpad', 'dojo', 'cyber', 'wasteland', 'space', 'lava'];
 for (const name of arenaFiles) {
   const rel = `assets/arenas/${name}.jpg`;
@@ -63,7 +63,7 @@ for (const name of arenaFiles) {
 assert(fs.existsSync(path.join(ROOT, 'assets/textures/paper/notebook_paper.png')), 'Notebook paper texture present');
 
 // 3. Audio Engine & SFX Assets
-console.log('\n[3/7] Verifying Mechanical Audio & Combat SFX...');
+console.log('\n[3/9] Verifying Mechanical Audio & Combat SFX...');
 const audioFiles = [
   'assets/audio/sfx/keys/thock_01.ogg',
   'assets/audio/sfx/keys/thock_02.ogg',
@@ -84,7 +84,7 @@ for (const audio of audioFiles) {
 }
 
 // 4. Prompt Engine Logic Simulation
-console.log('\n[4/7] Testing Prompt Engine Mechanics (Typing, Red Cursor, Accuracy)...');
+console.log('\n[4/9] Testing Prompt Engine Mechanics (Typing, Red Cursor, Accuracy)...');
 // Import PromptManager logic simulation
 class MockPromptManager {
   constructor() {
@@ -127,7 +127,7 @@ assert(promptTester.goodCount === 1 && promptTester.missCount === 1, 'Metrics: 1
 assert(promptTester.getAccuracy() === 50, 'Accuracy correctly calculated as 50%');
 
 // 5. Combat & DMC Style Rank Engine Simulation
-console.log('\n[5/7] Testing Combat Engine (DMC Ranks, Air Launcher, Slam, Rage)...');
+console.log('\n[5/9] Testing Combat Engine (DMC Ranks, Air Launcher, Slam, Rage)...');
 class MockComboEngine {
   constructor() {
     this.hits = 0;
@@ -165,7 +165,7 @@ comboTester.triggerRageMode();
 assert(comboTester.isRageMode === true, 'Caps Lock Rage Mode active');
 
 // 6. Regression tests for the reported bugs: A/D keys, alignment, arena wiring
-console.log('\n[6/7] Regression: typing keys, fighter alignment, arena wiring...');
+console.log('\n[6/9] Regression: typing keys, fighter alignment, arena wiring...');
 
 // 6a. Every letter must reach the typing prompt. WASD movement used to swallow A and D.
 const inputSrc = fs.readFileSync(path.join(ROOT, 'src/core/inputManager.js'), 'utf8');
@@ -214,7 +214,7 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   }
 
   // 7. Meme clips, meme queue and special moves
-  console.log('\n[7/7] Meme clips, queue phrases and special moves...');
+  console.log('\n[7/9] Meme clips, queue phrases and special moves...');
   const memeDir = path.join(ROOT, 'assets/memes');
   const manifestPath = path.join(memeDir, 'manifest.json');
   assert(fs.existsSync(manifestPath), 'Meme manifest exists (run `npm run fetch:memes` if missing)');
@@ -267,6 +267,53 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(fired.sentences[0] === first, 'Finishing a phrase reports that meme item');
   assert(fired.words.length === first.split(' ').length - 1, 'Each finished word (except the last) fires the word hook');
   assert(pm.currentText !== first, 'Queue advances to the next meme after a phrase');
+
+  console.log('');
+
+  // 8. Difficulty levels
+  console.log('\n[8/9] Easy / Medium / Hard bot levels...');
+  const diffSrc = fs.readFileSync(path.join(ROOT, 'src/combat/difficulty.js'), 'utf8').replace(/^export /gm, '');
+  const { DIFFICULTIES } = new Function(`${diffSrc}\nreturn { DIFFICULTIES };`)();
+  const lv = ['easy', 'medium', 'hard'].map((k) => DIFFICULTIES[k]);
+  assert(lv.every(Boolean), 'Easy, medium and hard are all defined');
+  const rising = (f) => f(lv[0]) < f(lv[1]) && f(lv[1]) < f(lv[2]);
+  const falling = (f) => f(lv[0]) > f(lv[1]) && f(lv[1]) > f(lv[2]);
+  assert(rising((d) => d.enemyHp), 'Bot health rises with difficulty');
+  assert(rising((d) => d.damage), 'Bot damage rises with difficulty');
+  assert(rising((d) => d.speed), 'Bot speed rises with difficulty');
+  assert(falling((d) => d.windup), 'Attack telegraph shrinks with difficulty (less time to react)');
+  assert(falling((d) => d.cooldown[0]) && falling((d) => d.cooldown[1]), 'Time between attacks shrinks with difficulty');
+  assert(rising((d) => d.counterOnTypo + d.doubleStrike + d.dodge), 'Typo counters, double swings and dodges all grow with difficulty');
+  assert(lv[0].mercy && lv[1].mercy && !lv[2].mercy, 'Only hard can finish you off while idle');
+  assert(rising((d) => d.score), 'Higher difficulty scores more');
+  assert(lv.every((d) => d.cooldown[0] < d.cooldown[1] && d.idleCooldown[0] < d.idleCooldown[1] && d.windup > 0.1), 'Every level has sane cooldown ranges and a reactable windup');
+  const dirSrc = fs.readFileSync(path.join(ROOT, 'src/combat/fightDirector.js'), 'utf8');
+  assert(/setDifficulty\(/.test(dirSrc) && /this\.diff\.windup/.test(dirSrc) && /this\.diff\.damage/.test(dirSrc), 'Fight director reads the difficulty table');
+  assert(fs.existsSync(path.join(ROOT, 'src/ui/modeSelect.js')), 'Start-screen mode picker exists');
+
+  // 9. Hosted build
+  console.log('\n[9/9] Slim hosted build (web-dist)...');
+  require('child_process').execFileSync('node', [path.join(ROOT, 'scripts/build_web.js')], { stdio: 'pipe' });
+  const dist = path.join(ROOT, 'web-dist');
+  const distFiles = (function walk(d) {
+    return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+  })(dist).filter((f) => !f.includes(`${path.sep}.vercel${path.sep}`) && !f.endsWith('.env.local'));
+  const distBytes = distFiles.reduce((n, f) => n + fs.statSync(f).size, 0);
+  assert(fs.existsSync(path.join(dist, 'index.html')) && fs.existsSync(path.join(dist, 'src/core/app.js')), 'Build contains the page and game code');
+  assert(fs.existsSync(path.join(dist, 'assets/libs/three.module.js')) && fs.existsSync(path.join(dist, 'assets/libs/three.core.js')), 'Build contains three.js and its core');
+  assert(arenaFiles.every((n) => fs.existsSync(path.join(dist, `assets/arenas/${n}.jpg`))), 'Build contains every arena backdrop');
+  assert(fs.existsSync(path.join(dist, 'assets/memes/manifest.json')), 'Build contains the meme manifest and clips');
+  assert(!fs.existsSync(path.join(dist, 'test')) && !fs.existsSync(path.join(dist, 'node_modules')) && !fs.existsSync(path.join(dist, 'assets/audio/_source_packs')), 'Build leaves out tests, node_modules and source packs');
+  assert(distBytes < 40e6, `Hosted build is lean (${(distBytes / 1e6).toFixed(1)} MB, limit 40 MB)`);
+  const cfg = JSON.parse(fs.readFileSync(path.join(dist, 'vercel.json'), 'utf8'));
+  assert(cfg.headers && cfg.headers.some((h) => /assets/.test(h.source) && /max-age=\d{5,}/.test(JSON.stringify(h.headers))), 'Assets are served with long-lived cache headers');
+  const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const preloaded = (indexHtml.match(/rel="modulepreload"/g) || []).length;
+  const srcCount = (function walk(d) {
+    return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [e]));
+  })(path.join(ROOT, 'src')).length;
+  assert(preloaded >= srcCount + 2, `Every game module is preloaded in parallel (${preloaded} modulepreload links for ${srcCount} modules + three.js)`);
+  assert(!/@import/.test(fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8')), 'No render-blocking @import in the stylesheet');
 
   console.log('');
 

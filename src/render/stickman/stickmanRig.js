@@ -179,14 +179,16 @@ function paperSilhouette(g, pts, extra) {
   g.fill();
 }
 
-function drawHair(g, style, time, big) {
+function drawHair(g, style, time, big, glow) {
   // local coords: head centre at origin, up is -y, forward is +x
   const spikes = [
     [-76, 30], [-52, 46], [-28, 60], [-6, 74], [18, 66], [42, 52], [66, 36]
   ];
   g.save();
-  g.shadowColor = style.glow;
-  g.shadowBlur = big ? 34 : 24;
+  if (glow) {
+    g.shadowColor = style.glow;
+    g.shadowBlur = big ? 34 : 24;
+  }
   g.fillStyle = style.fill;
   g.strokeStyle = style.edge;
   g.lineWidth = 3;
@@ -220,7 +222,7 @@ function drawHair(g, style, time, big) {
   g.restore();
 }
 
-function drawFace(g, { isHero, variant, face, style, time }) {
+function drawFace(g, { isHero, variant, face, style, time, glow }) {
   g.lineCap = 'round';
   g.strokeStyle = '#0b0b0e';
   g.fillStyle = '#0b0b0e';
@@ -245,8 +247,10 @@ function drawFace(g, { isHero, variant, face, style, time }) {
   } else if (style) {
     [ex - 5, ex + 11].forEach((x) => {
       g.fillStyle = style.eye;
-      g.shadowColor = style.eye;
-      g.shadowBlur = 10;
+      if (glow) {
+        g.shadowColor = style.eye;
+        g.shadowBlur = 10;
+      }
       g.beginPath();
       g.arc(x, ey, 4.6, 0, Math.PI * 2);
       g.fill();
@@ -412,8 +416,9 @@ export function drawStickman(canvas, poseState, opts, makeCanvas, scratch) {
   g.translate(pts.head[0], pts.head[1]);
   g.rotate(rad(pts.headAngle));
   // hair sits behind the face so its glow never washes out the eyes
-  if (opts.isHero && style) drawHair(g, style, opts.time, opts.bigHair);
-  drawFace(g, { isHero: opts.isHero, variant: opts.variant, face: opts.face, style, time: opts.time });
+  const glow = opts.glow !== false;
+  if (opts.isHero && style) drawHair(g, style, opts.time, opts.bigHair, glow);
+  drawFace(g, { isHero: opts.isHero, variant: opts.variant, face: opts.face, style, time: opts.time, glow });
   if (opts.isHero && !style) drawCap(g);
   g.restore();
 

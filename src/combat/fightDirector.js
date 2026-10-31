@@ -2,6 +2,8 @@
 // Runs everything that happens *between* keystrokes: the enemy walking in and fighting back,
 // fighters facing each other, the hero hovering during air juggles, afterimage trails,
 // KO / respawn, and the camera focus point.
+import { DIFFICULTIES, DEFAULT_DIFFICULTY, randBetween, saveDifficulty } from './difficulty.js';
+
 const FIGHT_GAP = 1.05; // preferred distance between fighters
 const ENEMY_BOUND = 6.1;
 const HERO_BOUND = 5.4;
@@ -27,17 +29,44 @@ export class FightDirector {
     this.sinceHeroHurt = 99;
     this.enemyNumber = 1;
     this.memes = null; // meme reaction player, set by the app
+    this.paused = false; // true while the mode picker is up
+
+    this.diffKey = DEFAULT_DIFFICULTY;
+    this.diff = DIFFICULTIES[this.diffKey];
+    combo.difficulty = this.diff;
+    combo.difficultyKey = this.diffKey;
 
     combo.onMiss = () => this.punish();
   }
 
-  // A typo invites an immediate counter.
+  // Switch the bot's level. The current enemy is rescaled in place, keeping its health fraction.
+  setDifficulty(key, { save = true } = {}) {
+    if (!DIFFICULTIES[key]) return;
+    this.diffKey = key;
+    this.diff = DIFFICULTIES[key];
+    this.combo.difficulty = this.diff;
+    this.combo.difficultyKey = key;
+    const e = this.enemy;
+    const frac = e.maxHealth > 0 ? e.health / e.maxHealth : 1;
+    e.maxHealth = this.scaledEnemyHealth();
+    e.health = e.health > 0 ? Math.max(1, Math.round(frac * e.maxHealth)) : 0;
+    this.attackCooldown = Math.max(this.attackCooldown, 1.5);
+    if (save) saveDifficulty(key);
+  }
+
+  scaledEnemyHealth() {
+    return Math.round((100 + this.combo.kills * 15) * this.diff.enemyHp);
+  }
+
+  // A typo can invite an immediate counter, depending on the level.
   punish() {
+    if (Math.random() >= this.diff.counterOnTypo) return;
     this.attackCooldown = Math.min(this.attackCooldown, 0.12);
     this.punishPending = true;
   }
 
   update(dt) {
+    if (this.paused) return;
     const h = this.hero;
     const e = this.enemy;
     this.sinceHeroHurt += dt;
@@ -90,7 +119,7 @@ export class FightDirector {
       const want = h.x + side * FIGHT_GAP;
       const diff = want - e.x;
       if (Math.abs(diff) > 0.1) {
-        const speed = this.entering ? 6.2 : 2.7;
+        const speed = this.entering ? 6.2 : this.diff.speed;
         e.x += Math.sign(diff) * Math.min(Math.abs(diff), speed * dt);
         e.walking = true;
         e.walkSpeed = speed;
@@ -100,23 +129,37 @@ export class FightDirector {
       this.attackCooldown -= dt;
       const closeEnough = Math.abs(e.x - h.x) < 1.5;
       if (this.attackCooldown <= 0 && closeEnough && !h.isAirborne && h.health > 0 && h.lockTimer <= 0 && !this.entering) {
-        this.attack = { t: 0, struck: false, punish: this.punishPending };
+        this.attack = {
+          t: 0,
+          struck: false,
+          second: false,
+          double: Math.random() < this.diff.doubleStrike,
+          punish: this.punishPending
+        };
         this.punishPending = false;
-        e.setPose('windup', 0.3, true);
+        e.setPose('windup', this.diff.windup + 0.05, true);
       }
     }
 
     if (this.attack) {
-      this.attack.t += dt;
-      if (!this.attack.struck && this.attack.t >= 0.3) {
-        this.attack.struck = true;
+      const a = this.attack;
+      a.t += dt;
+      const windup = this.diff.windup;
+      if (!a.struck && a.t >= windup) {
+        a.struck = true;
         e.setPose('punch', 0.28, true);
         this.enemyStrike();
       }
-      if (this.attack.t >= 0.62) {
+      // Harder bots follow up with a second swing
+      if (a.double && a.struck && !a.second && a.t >= windup + 0.3) {
+        a.second = true;
+        e.setPose('kick', 0.25, true);
+        this.enemyStrike();
+      }
+      if (a.t >= windup + (a.double ? 0.7 : 0.4)) {
         this.attack = null;
         const idleFor = (performance.now() - this.combo.lastActionAt) / 1000;
-        this.attackCooldown = idleFor > 2 ? 2.2 + Math.random() * 1.2 : 3 + Math.random() * 1.8;
+        this.attackCooldown = randBetween(idleFor > 2 ? this.diff.idleCooldown : this.diff.cooldown);
       }
     }
   }
@@ -137,9 +180,9 @@ export class FightDirector {
       return;
     }
 
-    let dmg = 5 + Math.min(6, this.combo.kills);
-    // Mercy: standing idle can wear you down but never finish you; only a typo counter can.
-    if (!this.attack.punish) dmg = Math.min(dmg, Math.max(0, h.health - 5));
+    let dmg = this.diff.damage + Math.min(4, this.combo.kills * 0.6);
+    // Mercy (easy/medium): standing idle can wear you down but never finish you; only a typo counter can.
+    if (this.diff.mercy && !(this.attack && this.attack.punish)) dmg = Math.min(dmg, Math.max(0, h.health - 5));
     const res = h.takeHit(dmg, { knock: 0.5, stun: 0.3 });
     if (!res.hit) return;
     this.sinceHeroHurt = 0;
@@ -159,7 +202,7 @@ export class FightDirector {
     this.enemyNumber++;
     e.revive();
     e.randomizeVariant();
-    e.maxHealth = 100 + this.combo.kills * 15;
+    e.maxHealth = this.scaledEnemyHealth();
     e.health = e.maxHealth;
     // Run in from beyond the right edge of the screen
     const edge = this.arena.camX + this.arena.worldHalfWidth() + 1.6;
@@ -202,7 +245,7 @@ export class FightDirector {
 
     // Slow recovery when nobody's hitting you
     if (this.sinceHeroHurt > 3 && h.health < h.maxHealth) {
-      h.health = Math.min(h.maxHealth, h.health + 5 * dt);
+      h.health = Math.min(h.maxHealth, h.health + this.diff.heroRegen * dt);
     }
   }
 

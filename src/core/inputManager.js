@@ -11,6 +11,7 @@ export class InputManager {
     this.menu = memeMenu;
     this.hero = hero;
     this.enemy = enemy;
+    this.blockers = [memeMenu]; // anything with .isOpen (menu, mode picker) that should capture the keyboard
 
     // Held key state for continuous movement
     this.keysHeld = {
@@ -37,8 +38,8 @@ export class InputManager {
   }
 
   onKeyDown(e) {
-    // If the custom phrase menu modal is open, let user type into input freely
-    if (this.menu && this.menu.isOpen) {
+    // While the menu or the mode picker is open, the game ignores the keyboard
+    if (this.blockers.some((b) => b && b.isOpen)) {
       return;
     }
 

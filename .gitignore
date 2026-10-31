@@ -1,8 +1,9 @@
-node_modules/
-dist/
+*.log
+*.pyc
 .DS_Store
 Thumbs.db
-*.log
 __pycache__/
-*.pyc
+dist/
+node_modules/
 scratch/
+web-dist/

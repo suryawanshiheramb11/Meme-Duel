@@ -20,6 +20,9 @@ const MESH_CENTER_Y = (GROUND_Y - CANVAS_SIZE / 2) / PX_PER_UNIT;
 const GRAVITY = 30;
 const FRICTION = 7;
 
+// Seconds between redraws of a calm fighter, by quality level (0 low, 1 medium, 2 high)
+const IDLE_REDRAW = [1 / 30, 1 / 45, 0];
+
 const SNAP_POSES = new Set(['jab', 'jab2', 'punch', 'kick', 'launcher', 'slam', 'hurt', 'kame', 'windup']);
 const SHOUT_POSES = new Set(['launcher', 'slam', 'kame', 'charge', 'charge2', 'punch', 'kick']);
 
@@ -70,6 +73,8 @@ export class PaperStandee {
     this.flash = 0;
     this.strikeAlt = 0;
     this.anchors = null;
+    this.quality = 2; // set by the performance monitor
+    this.drawAccum = 0;
 
     this.canvas = makeCanvas(CANVAS_SIZE, CANVAS_SIZE);
     this.scratch = createScratch(makeCanvas);
@@ -307,11 +312,19 @@ export class PaperStandee {
   }
 
   render(delta) {
-    if (this.walking && !this.isAirborne) this.walkPhase += delta * (6 + Math.abs(this.walkSpeed) * 2.4);
+    // A fighter in the middle of a strike, hit, flash or jump redraws every frame. A calm one
+    // (guard / walking) can skip frames on slower devices; the skipped time is applied next draw.
+    this.drawAccum += delta;
+    const busy = this.pose !== 'guard' || this.flash > 0.01 || this.isAirborne || this.slideTarget !== null;
+    if (!busy && this.drawAccum < IDLE_REDRAW[this.quality]) return;
+    const dt = this.drawAccum;
+    this.drawAccum = 0;
+
+    if (this.walking && !this.isAirborne) this.walkPhase += dt * (6 + Math.abs(this.walkSpeed) * 2.4);
 
     const target = this.buildTarget();
-    const sharp = SNAP_POSES.has(this.pose) ? 36 : this.pose === 'knockdown' ? 24 : 20;
-    blendPose(this.state, this.pose, Math.max(delta, 0.0001), sharp, target);
+    const sharp = SNAP_POSES.has(this.pose) ? 56 : this.pose === 'knockdown' ? 24 : 20;
+    blendPose(this.state, this.pose, Math.max(dt, 0.0001), sharp, target);
 
     let face = 'normal';
     if (this.pose === 'hurt') face = 'hurt';
@@ -328,7 +341,8 @@ export class PaperStandee {
         face,
         time: this.time,
         flash: this.flash,
-        bigHair: this.bigHair
+        bigHair: this.bigHair,
+        glow: this.quality >= 1
       },
       makeCanvas,
       this.scratch

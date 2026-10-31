@@ -356,7 +356,10 @@ class AuraRig {
     this.flipT -= dt;
     const doFlip = this.flipT <= 0;
     if (doFlip) this.flipT = 0.07;
+    const q = this.fx.quality;
     this.layers.forEach((l, i) => {
+      l.s.visible = i < [1, 2, 3][q];
+      if (!l.s.visible) return;
       if (doFlip && Math.random() < 0.5) l.flip *= -1;
       const sx = l.w * L * (1 + 0.06 * Math.sin(this.t * 17 + l.seed)) * l.flip;
       const sy = l.h * L * (1 + 0.1 * Math.sin(this.t * 13 + l.seed * 2));
@@ -375,7 +378,7 @@ class AuraRig {
     this.floor.material.color.set(st.color);
     this.floor.material.opacity = 0.7 * Math.min(1, L);
 
-    this.emitT += dt * 20 * L;
+    this.emitT += dt * 20 * L * [0.25, 0.7, 1][q];
     while (this.emitT >= 1) {
       this.emitT -= 1;
       this.fx.particles.spawn({
@@ -392,7 +395,7 @@ class AuraRig {
       });
     }
 
-    if (st.lightning) {
+    if (st.lightning && q >= 2) {
       this.lightT -= dt;
       if (this.lightT <= 0) {
         this.lightT = 0.065;
@@ -420,6 +423,7 @@ export class EffectsManager {
     this.ambient = { type: 'none', items: [] };
     this.ambientCenter = 0;
     this.afterimagePool = [];
+    this.quality = 2; // 0 low, 1 medium, 2 high; set by the performance monitor
     this.shakeFn = () => {};
 
     this.fxLayer = document.createElement('div');
@@ -429,6 +433,20 @@ export class EffectsManager {
     this.vignetteEl = document.createElement('div');
     this.vignetteEl.id = 'form-vignette';
     container.append(this.vignetteEl, this.fxLayer, this.flashEl);
+  }
+
+  setQuality(level) {
+    this.quality = level;
+    this.particles.max = [140, 300, 520][level];
+    this.applyAmbientDensity();
+  }
+
+  applyAmbientDensity() {
+    const keep = [0, 0.5, 1][this.quality];
+    const n = this.ambient.items.length;
+    this.ambient.items.forEach((it, i) => {
+      it.sprite.visible = i < Math.ceil(n * keep);
+    });
   }
 
   attachAura(fighter) {
@@ -580,6 +598,7 @@ export class EffectsManager {
 
   // ghost copy of a fighter's current frame
   afterimage(fighter, tint = '#9be8ff', life = 0.38) {
+    if (this.quality < 1) return;
     let a = this.afterimagePool.pop();
     if (!a) {
       const c = document.createElement('canvas');
@@ -776,6 +795,7 @@ export class EffectsManager {
       this.scene.add(sprite);
       this.ambient.items.push({ sprite, ox: rnd(-10, 10), y: rnd(0, 6), seed: rnd(0, 10), speed: rnd(0.5, 1.2) });
     }
+    this.applyAmbientDensity();
   }
 
   updateAmbient(dt, camX) {
@@ -783,6 +803,7 @@ export class EffectsManager {
     const t = performance.now() / 1000;
     for (const it of items) {
       const s = it.sprite;
+      if (!s.visible) continue;
       s.position.x = camX + it.ox;
       switch (type) {
         case 'embers':

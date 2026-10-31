@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const ROOT = __dirname;
+// Serve the repo by default; `ROOT=web-dist npm run serve` previews the hosted build
+const ROOT = path.resolve(process.env.ROOT || __dirname);
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -29,7 +30,7 @@ const server = http.createServer((req, res) => {
   const filePath = path.join(ROOT, reqUrl);
 
   // Security check: ensure path stays within ROOT
-  if (!filePath.startsWith(ROOT)) {
+  if (!filePath.startsWith(ROOT + path.sep) && filePath !== ROOT) {
     res.writeHead(403);
     res.end('Forbidden');
     return;

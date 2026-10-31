@@ -9,6 +9,9 @@ import { PromptManager } from '../combat/promptManager.js';
 import { RetroHud } from '../ui/retroHud.js';
 import { MemeComboMenu } from '../ui/memeComboMenu.js';
 import { MemeReactions } from '../ui/memeReactions.js';
+import { ModeSelect } from '../ui/modeSelect.js';
+import { PerfMonitor } from './perfMonitor.js';
+import { loadDifficulty } from '../combat/difficulty.js';
 import { InputManager } from './inputManager.js';
 
 const MUSIC = {
@@ -51,6 +54,7 @@ export class App {
     this.hero.x = -0.55;
     this.enemy.x = 0.5;
     this.fx.attachAura(this.hero);
+    this.perf = new PerfMonitor({ arena: this.arena, fx: this.fx, fighters: [this.hero, this.enemy] });
 
     // 4. Combat, style rank & power forms
     this.combo = new ComboEngine(this.audio, this.arena, this.fx);
@@ -72,6 +76,8 @@ export class App {
       audio: this.audio
     });
     this.director.memes = this.memes;
+    this.director.setDifficulty(loadDifficulty(), { save: false });
+    this.director.paused = true; // the bot waits while you pick a level
 
     // 6. Floating prompt engine: finishing a sentence fires the beam finisher
     // Each prompt is a meme's catchphrase: letters strike, finished words add a bonus hit,
@@ -89,16 +95,24 @@ export class App {
     this.hud.updatePrompt(this.prompt);
 
     // Build the meme queue as soon as the clip list is known
+    // Warm the cache for the clip being typed and the next two, so the payoff plays with no delay
+    const prefetchUpcoming = () => {
+      const upcoming = [this.prompt.currentItem, ...this.prompt.peek(2)].filter(Boolean);
+      this.memes.prefetch(upcoming.map((i) => i.clip.file));
+    };
+    this.prompt.onAdvance = prefetchUpcoming;
     this.memes.loaded.then(() => {
       const items = this.memes.clips.filter((c) => c.phrase).map((c) => ({ phrase: c.phrase, clip: c, move: c.move }));
       if (items.length) {
         this.prompt.setQueue(items);
         this.hud.updatePrompt(this.prompt);
+        prefetchUpcoming();
+        this.memes.prefetchAllWhenIdle(); // everything else trickles in behind the scenes
       }
     });
 
     // 8. Meme Combo Maker menu
-    this.menu = new MemeComboMenu(this.container, this.arena, this.prompt, this.audio, this.combo, this.memes);
+    this.menu = new MemeComboMenu(this.container, this.arena, this.prompt, this.audio, this.combo, this.memes, this.director, this.perf);
 
     // 9. Input
     this.input = new InputManager(
@@ -110,6 +124,14 @@ export class App {
       this.hero,
       this.enemy
     );
+
+    // Start screen: choose Easy / Medium / Hard. The bot stays put until you do.
+    this.modeSelect = new ModeSelect(this.container, this.director.diffKey, (level) => {
+      this.director.setDifficulty(level);
+      this.director.paused = false;
+      this.combo.lastActionAt = performance.now();
+    });
+    this.input.blockers.push(this.modeSelect);
 
     // Start background music on first user interaction (browsers block autoplay)
     const startAudioOnce = () => {
@@ -144,7 +166,7 @@ export class App {
     let dt = delta;
     if (this.combo.slowTimer > 0) {
       this.combo.slowTimer -= delta;
-      dt = delta * 0.3;
+      dt = delta * 0.4;
     }
     let simDt = dt;
     if (this.combo.hitStop > 0) {
@@ -152,6 +174,7 @@ export class App {
       simDt = 0;
     }
 
+    this.perf.tick(delta);
     this.input.update(simDt);
     this.combo.update(dt);
     this.prompt.update(dt);

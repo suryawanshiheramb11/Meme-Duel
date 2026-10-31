@@ -31,6 +31,8 @@ export class PromptManager {
     this.currentItem = null; // queue item for the current sentence, if any
     this.charIndex = 0;
 
+    this.onAdvance = null; // called whenever the queue moves to the next meme
+
     // Meme queue
     this.queue = [];
     this.queuePos = 0;
@@ -143,6 +145,7 @@ export class PromptManager {
     if (this.queue.length) {
       this.queuePos = (this.queuePos + 1) % this.queue.length;
       this.loadItem(this.queue[this.queuePos]);
+      if (this.onAdvance) this.onAdvance();
       return;
     }
     this.currentItem = null;
