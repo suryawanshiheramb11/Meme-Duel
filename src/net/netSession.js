@@ -24,7 +24,14 @@ export function loadPeerLib() {
     libPromise = new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = PEER_SCRIPT;
-      s.onload = () => resolve();
+      s.onload = () =>
+        fetch('src/net/ice.json', { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((cfg) => {
+            if (cfg && Array.isArray(cfg.iceServers)) extraIce = cfg.iceServers;
+          })
+          .catch(() => {})
+          .then(resolve);
       s.onerror = () => reject(new Error('Could not load the multiplayer library.'));
       document.head.appendChild(s);
     });
@@ -40,19 +47,18 @@ export function randomCode(length = 5) {
 export const cleanCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 
 // A custom broker can be supplied as ?signal=host:port (handy for self-hosting `peerjs-server`)
-// STUN finds each browser's public address; the TURN relay is the fallback for networks that block
-// direct connections (it is a free community relay, so it is a best effort, not a guarantee).
-const ICE_SERVERS = [
+// STUN lets each browser learn its public address so two browsers can connect directly. That works on most
+// home networks. Networks that block it (mobile hotspots, many campus and office networks, some VPNs) need a
+// TURN relay, which has to be a server with credentials: put yours in src/net/ice.json (see the README).
+const STUN_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:global.stun.twilio.com:3478' },
-  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  { urls: 'stun:global.stun.twilio.com:3478' }
 ];
+let extraIce = [];
 
 function peerOptions() {
-  const config = { iceServers: ICE_SERVERS };
+  const config = { iceServers: [...STUN_SERVERS, ...extraIce] };
   const custom = new URLSearchParams(location.search).get('signal');
   if (!custom) return { config };
   const [host, port] = custom.split(':');
@@ -403,4 +409,25 @@ export async function quickMatch({ onStatus, isCancelled }) {
     cleanup();
     throw err;
   }
+}
+
+/**
+ * Quick network check, shown when a connection fails: can this browser learn its public address (so a direct
+ * link is possible), and is a TURN relay configured?
+ */
+export async function diagnose() {
+  const out = { direct: false, relayConfigured: extraIce.some((s) => /^turns?:/.test([].concat(s.urls)[0])) };
+  try {
+    const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+    pc.createDataChannel('probe');
+    pc.onicecandidate = (e) => {
+      if (e.candidate && e.candidate.type === 'srflx') out.direct = true;
+    };
+    await pc.setLocalDescription(await pc.createOffer());
+    await new Promise((r) => setTimeout(r, 3500));
+    pc.close();
+  } catch (e) {
+    /* WebRTC blocked entirely */
+  }
+  return out;
 }

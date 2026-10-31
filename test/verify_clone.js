@@ -314,7 +314,7 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const preloaded = (indexHtml.match(/rel="modulepreload"/g) || []).length;
   const srcCount = (function walk(d) {
-    return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [e]));
+    return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.js') ? [e] : []));
   })(path.join(ROOT, 'src')).length;
   const landingSrc = fs.readFileSync(path.join(ROOT, 'src/landing/landing.js'), 'utf8');
   const listed = (landingSrc.match(/'(?:src|assets)\/[^']+\.js'/g) || []).length;
@@ -401,7 +401,7 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   const lockerSrc = rd('src/core/locker.js');
   assert(/ACCESSORIES/.test(lockerSrc) && /headband/.test(lockerSrc) && /crown/.test(lockerSrc) && /export function buy/.test(lockerSrc), 'The store sells accessories (headband, crown, hats, glasses...)');
   assert(/drawHeadGear/.test(rd('src/render/stickman/stickmanRig.js')) && /currentGear/.test(rd('src/core/app.js')) && /t: 'gear'/.test(vsSrc), 'Equipped gear is drawn on your fighter and shown to your online opponent');
-  assert(/rdy/.test(rd('src/ui/onlineLobby.js')) && /ICE_SERVERS/.test(netSrc), 'Online rooms have a ready-up lobby and a TURN fallback');
+  assert(/rdy/.test(rd('src/ui/onlineLobby.js')) && /STUN_SERVERS/.test(netSrc) && fs.existsSync(path.join(ROOT, 'src/net/ice.json')), 'Online rooms have a ready-up lobby and a configurable TURN relay (src/net/ice.json)');
   console.log('');
 
 console.log('\n====================================================');

@@ -1,5 +1,5 @@
 // Meme Duel - online lobby: quick match, create a room, or join one by code.
-import { quickMatch, createRoom, joinRoom, cleanCode } from '../net/netSession.js';
+import { quickMatch, createRoom, joinRoom, cleanCode, diagnose } from '../net/netSession.js';
 
 export class OnlineLobby {
   constructor(container, { onSession, invite, arenaPicker }) {
@@ -125,6 +125,15 @@ export class OnlineLobby {
       this.codeEl.hidden = true;
       this.copyEl.hidden = true;
       this.status(this.explain(err), 'err');
+      if (err.code === 'connect-failed') {
+        diagnose().then((d) => {
+          if (this.busyNow) return;
+          const why = !d.direct
+            ? 'Your network does not allow direct player-to-player links (common on hotspots, campus, office and VPN connections).'
+            : 'Your side looks fine, so the other player\'s network is probably the one blocking the link.';
+          this.status(`${this.explain(err)} ${why}${d.relayConfigured ? '' : ' This game has no relay server set up yet.'}`, 'err');
+        });
+      }
     };
     const done = (session, kind = 'room') => {
       if (this.cancelled) return session.close();

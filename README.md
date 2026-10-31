@@ -106,7 +106,15 @@ Win the deciding round by KO and the screen says **FINISH HIM!**. You have six s
 
 Online duels are human against human: no bot, no secret moves, even health, same rounds and fatality. Hits are decided by the player being hit (so your own guard and dash always count), and the host keeps the clock.
 
-It is peer-to-peer (WebRTC through PeerJS). The only shared service is PeerJS's free public matchmaking broker, which just introduces two browsers; game data goes straight between them. Two limits to know about: a few strict corporate or mobile networks block direct connections and there is no relay server, and the free broker is a community service with no uptime guarantee. To self-host the broker, run `npx peerjs --port 9000` and open the game with `?signal=localhost:9000`.
+It is peer-to-peer (WebRTC through PeerJS). The only shared service is PeerJS's free public matchmaking broker, which just introduces two browsers; game data goes straight between them.
+
+**What can stop two players connecting** ("Found room XXXXX but could not connect"): a direct link needs both networks to allow it. That works on most home Wi-Fi and fails on mobile hotspots, many campus and office networks, some VPNs, Wi-Fi with "client isolation", and browsers with WebRTC blocked (strict privacy modes). Players on the same Wi-Fi almost always connect. For everyone else the game needs a **TURN relay server**, which has to be a server with credentials, so none is bundled (the free public one this project first used has since shut down). To add one, put its details in `src/net/ice.json` and redeploy:
+
+```json
+{ "iceServers": [ { "urls": "turn:YOUR-HOST:3478", "username": "USER", "credential": "PASSWORD" } ] }
+```
+
+Free options: a Metered.ca or Cloudflare Calls TURN account (sign up, copy the credentials), or run your own `coturn`. The free broker is also a community service with no uptime guarantee. To self-host the broker, run `npx peerjs --port 9000` and open the game with `?signal=localhost:9000`.
 
 ---
 
