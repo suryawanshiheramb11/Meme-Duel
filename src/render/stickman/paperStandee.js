@@ -1,181 +1,363 @@
-// Keyboard Warrior Stickman - Authentic Crumpled Notebook Paper Cutout Standee System
+// Keyboard Warrior Stickman - animated notebook-paper standee (hero or enemy).
+// Owns the fighter's physics (knockback, launch, landing) and paints its pose onto a
+// canvas texture every frame, so limbs actually move and strikes actually connect.
 import * as THREE from 'three';
+import {
+  CANVAS_SIZE,
+  PX_PER_UNIT,
+  GROUND_Y,
+  POSES,
+  ENEMY_VARIANTS,
+  createPoseState,
+  blendPose,
+  drawStickman,
+  createScratch,
+  pxToWorld
+} from './stickmanRig.js';
+
+const PLANE_SIZE = CANVAS_SIZE / PX_PER_UNIT; // world units
+const MESH_CENTER_Y = (GROUND_Y - CANVAS_SIZE / 2) / PX_PER_UNIT;
+const GRAVITY = 30;
+const FRICTION = 7;
+
+const SNAP_POSES = new Set(['jab', 'jab2', 'punch', 'kick', 'launcher', 'slam', 'hurt', 'kame', 'windup']);
+const SHOUT_POSES = new Set(['launcher', 'slam', 'kame', 'charge', 'charge2', 'punch', 'kick']);
+
+const makeCanvas = (w, h) => {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+};
 
 export class PaperStandee {
   constructor(isHero = true, scene) {
     this.isHero = isHero;
     this.scene = scene;
-    this.group = new THREE.Group();
-    
-    // Transform state
-    this.x = isHero ? -1.8 : 1.8;
-    this.y = 0; // vertical height (for air launches)
-    this.z = 0;
-    this.facing = isHero ? 1 : -1;
+
+    // Transform & physics
+    this.x = isHero ? -1.2 : 1.4;
+    this.y = 0;
+    this.vx = 0;
     this.vy = 0;
+    this.facing = isHero ? 1 : -1;
     this.isAirborne = false;
-    
-    // Animation state
-    this.currentPose = 'idle'; // idle, run, jab, punch, kick, launcher, juggle, slam, hurt, knockdown
-    this.animTime = 0;
-    this.hitStopFrames = 0;
+    this.hover = false; // hero floats alongside a juggled enemy
+    this.walking = false;
+    this.walkSpeed = 0;
+    this.slideTarget = null; // lunges and dashes glide here, ignoring friction
+    this.slideSpeed = 26;
+    this.auraBoost = 0;
+    this.onLand = null;
+
+    // Vitals
     this.health = 100;
     this.maxHealth = 100;
+    this.invulnTimer = 0;
 
-    // Load authentic extracted cutout textures
-    const textureLoader = new THREE.TextureLoader();
-    this.textures = {
-      hero_guard: textureLoader.load('assets/textures/paper/standee_hero_guard.png'),
-      hero_kick: textureLoader.load('assets/textures/paper/standee_hero_kick.png'),
-      enemy_guard: textureLoader.load('assets/textures/paper/standee_enemy_guard.png'),
-      enemy_hit: textureLoader.load('assets/textures/paper/standee_enemy_hit.png'),
-      enemy_knockdown: textureLoader.load('assets/textures/paper/standee_enemy_knockdown.png'),
-      enemy_jump: textureLoader.load('assets/textures/paper/standee_enemy_jump.png')
-    };
+    // Look
+    this.form = 'base';
+    this.variant = isHero ? 'cap' : 'glasses';
+    this.bigHair = false;
 
-    // Build the 3D Billboard mesh with paper cutout material
-    const geometry = new THREE.PlaneGeometry(2.4, 2.6);
+    // Animation
+    this.pose = 'guard';
+    this.poseTimer = 0;
+    this.lockTimer = 0; // blocks pose changes during scripted moves (beam, power-up)
+    this.state = createPoseState('guard');
+    this.time = Math.random() * 10;
+    this.walkPhase = 0;
+    this.flash = 0;
+    this.strikeAlt = 0;
+    this.anchors = null;
+
+    this.canvas = makeCanvas(CANVAS_SIZE, CANVAS_SIZE);
+    this.scratch = createScratch(makeCanvas);
+    this.texture = new THREE.CanvasTexture(this.canvas);
+    this.texture.colorSpace = THREE.SRGBColorSpace;
+    this.texture.generateMipmaps = false;
+    this.texture.minFilter = THREE.LinearFilter;
+
+    this.group = new THREE.Group();
     this.material = new THREE.MeshBasicMaterial({
-      map: isHero ? this.textures.hero_guard : this.textures.enemy_guard,
+      map: this.texture,
       transparent: true,
-      alphaTest: 0.05,
+      alphaTest: 0.04,
       side: THREE.DoubleSide
     });
-
-    this.mesh = new THREE.Mesh(geometry, this.material);
-    this.mesh.position.y = 1.3;
+    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE), this.material);
+    this.mesh.position.y = MESH_CENTER_Y;
     this.group.add(this.mesh);
 
-    // Realistic Elliptical Drop Shadow onto the 3D Desk/Keyboard
-    const shadowGeo = new THREE.PlaneGeometry(1.6, 0.6);
-    const shadowCanvas = document.createElement('canvas');
-    shadowCanvas.width = 128;
-    shadowCanvas.height = 64;
-    const sCtx = shadowCanvas.getContext('2d');
-    const grad = sCtx.createRadialGradient(64, 32, 0, 64, 32, 56);
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
-    grad.addColorStop(0.6, 'rgba(15, 10, 5, 0.35)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    sCtx.fillStyle = grad;
-    sCtx.fillRect(0, 0, 128, 64);
-
-    const shadowTex = new THREE.CanvasTexture(shadowCanvas);
-    const shadowMat = new THREE.MeshBasicMaterial({
-      map: shadowTex,
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false
-    });
-    this.shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+    // Soft contact shadow under the feet
+    const sc = makeCanvas(128, 64);
+    const sg = sc.getContext('2d');
+    const grad = sg.createRadialGradient(64, 32, 0, 64, 32, 58);
+    grad.addColorStop(0, 'rgba(0,0,0,0.7)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0.3)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    sg.fillStyle = grad;
+    sg.fillRect(0, 0, 128, 64);
+    this.shadowMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.9, 0.7),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sc), transparent: true, depthWrite: false })
+    );
     this.shadowMesh.rotation.x = -Math.PI / 2;
     this.shadowMesh.position.y = 0.02;
-    this.group.add(this.shadowMesh);
+    this.scene.add(this.shadowMesh);
 
-    this.updatePosition();
     this.scene.add(this.group);
+    this.randomizeVariant();
+    this.render(0);
+    this.syncTransform();
   }
 
-  setPose(poseName, duration = 0.25) {
-    if (this.currentPose === 'knockdown' && poseName !== 'idle') return;
-    this.currentPose = poseName;
-    this.animTime = duration;
-
-    if (this.isHero) {
-      if (poseName === 'kick' || poseName === 'launcher') {
-        this.material.map = this.textures.hero_kick;
-      } else {
-        this.material.map = this.textures.hero_guard;
-      }
-    } else {
-      if (poseName === 'hurt') {
-        this.material.map = this.textures.enemy_hit;
-      } else if (poseName === 'knockdown') {
-        this.material.map = this.textures.enemy_knockdown;
-      } else if (poseName === 'air') {
-        this.material.map = this.textures.enemy_jump;
-      } else {
-        this.material.map = this.textures.enemy_guard;
-      }
-    }
-    this.material.needsUpdate = true;
+  // ----------------------------------------------------------- state changes
+  randomizeVariant() {
+    if (this.isHero) return;
+    const pool = ENEMY_VARIANTS.filter((v) => v !== this.variant);
+    this.variant = pool[Math.floor(Math.random() * pool.length)];
   }
 
-  launchIntoAir(verticalPower = 12) {
-    this.vy = verticalPower;
+  setPose(name, duration = 0.25, force = false) {
+    if (!force && this.lockTimer > 0) return;
+    if (!force && this.pose === 'knockdown' && this.health <= 0) return;
+    if (!POSES[name]) name = name === 'idle' ? 'guard' : 'guard';
+    this.pose = name;
+    this.poseTimer = duration;
+  }
+
+  lock(seconds) {
+    this.lockTimer = Math.max(this.lockTimer, seconds);
+  }
+
+  slideTo(x, speed = 26) {
+    this.slideTarget = x;
+    this.slideSpeed = speed;
+  }
+
+  // Cycle jab / jab2 / punch / kick so a typing streak reads as a flurry.
+  attackPose(kind) {
+    if (kind === 'kick' || kind === 'crit') return 'kick';
+    if (kind === 'heavy') return 'punch';
+    this.strikeAlt = (this.strikeAlt + 1) % 3;
+    return this.strikeAlt === 2 ? 'punch' : this.strikeAlt === 1 ? 'jab2' : 'jab';
+  }
+
+  attack(kind = 'light') {
+    const pose = this.attackPose(kind);
+    this.setPose(this.isAirborne ? (pose === 'kick' ? 'kick' : pose) : pose, 0.2);
+    return pose;
+  }
+
+  launchIntoAir(power = 11) {
+    this.vy = power;
     this.isAirborne = true;
-    this.setPose(this.isHero ? 'juggle' : 'air', 1.0);
+    this.setPose(this.isHero ? 'jump' : 'air', 1.2, true);
+  }
+
+  jump(power = 9) {
+    this.vy = power;
+    this.isAirborne = true;
+    this.setPose('jump', 1.0, true);
   }
 
   groundSlam() {
-    this.vy = -18;
-    this.setPose('slam', 0.5);
+    this.hover = false;
+    this.vy = -28;
+    this.isAirborne = true;
+    this.setPose('slam', 0.6, true);
   }
 
-  takeHit(damage = 10, launch = false) {
+  // knock = distance (world units) the fighter slides back
+  takeHit(damage = 10, opts = {}) {
+    const { launch = 0, knock = 0.3, stun = 0.26, quiet = false } = opts;
+    if (this.invulnTimer > 0) return { hit: false, ko: false };
     this.health = Math.max(0, this.health - damage);
-    this.hitStopFrames = 4; // 60 FPS frame-freeze juice
+    this.flash = quiet ? 0.4 : 1;
+    this.vx += -this.facing * knock * FRICTION;
 
     if (this.health <= 0) {
-      this.setPose('knockdown', 3.0);
-      this.vy = 4;
-      this.isAirborne = true;
-    } else if (launch) {
-      this.launchIntoAir(10);
-    } else {
-      this.setPose('hurt', 0.22);
-      this.x += this.facing * -0.25; // Knockback
+      this.ko(launch || 5);
+      return { hit: true, ko: true };
     }
+    if (launch) {
+      this.launchIntoAir(launch);
+    } else if (!this.isAirborne) {
+      this.setPose('hurt', stun, true);
+    }
+    return { hit: true, ko: false };
   }
 
+  ko(launch = 5) {
+    this.health = 0;
+    this.lockTimer = 0;
+    this.hover = false;
+    this.vy = launch;
+    this.isAirborne = true;
+    this.setPose('knockdown', 99, true);
+  }
+
+  revive() {
+    this.health = this.maxHealth;
+    this.lockTimer = 0;
+    this.poseTimer = 0;
+    this.vx = 0;
+    this.vy = 0;
+    this.y = 0;
+    this.slideTarget = null;
+    this.isAirborne = false;
+    this.hover = false;
+    this.pose = 'guard';
+    this.flash = 0;
+  }
+
+  // ----------------------------------------------------------- per-frame
   update(delta) {
-    if (this.hitStopFrames > 0) {
-      this.hitStopFrames--;
-      return;
+    this.time += delta;
+    if (this.lockTimer > 0) this.lockTimer -= delta;
+    if (this.invulnTimer > 0) this.invulnTimer -= delta;
+    this.flash = Math.max(0, this.flash - delta * 5);
+
+    // Scripted glide (lunge / dash), then knockback slide with friction
+    if (this.slideTarget !== null) {
+      const d = this.slideTarget - this.x;
+      const step = this.slideSpeed * delta;
+      if (Math.abs(d) <= step) {
+        this.x = this.slideTarget;
+        this.slideTarget = null;
+      } else {
+        this.x += Math.sign(d) * step;
+      }
     }
+    this.x += this.vx * delta;
+    this.vx *= Math.exp(-FRICTION * delta * (this.isAirborne ? 0.35 : 1));
 
-    // Airborne physics
-    if (this.isAirborne) {
+    // Vertical: float, or gravity
+    if (this.hover) {
+      this.vy = 0;
+    } else if (this.isAirborne) {
       this.y += this.vy * delta;
-      this.vy -= 28 * delta; // Gravity
-
-      if (this.y <= 0) {
+      const impact = -this.vy;
+      this.vy -= GRAVITY * delta;
+      // Only land while falling: during a hit-stop freeze (delta 0) a freshly launched
+      // fighter still sits at y=0 and must not count as landed.
+      if (this.y <= 0 && this.vy <= 0) {
         this.y = 0;
         this.vy = 0;
         this.isAirborne = false;
-        if (this.health <= 0) {
-          this.setPose('knockdown', 3.0);
-        } else {
-          this.setPose('idle');
-        }
+        const dead = this.health <= 0;
+        if (dead) this.setPose('knockdown', 99, true);
+        else if (this.pose === 'air' || this.pose === 'jump' || this.pose === 'slam') this.setPose('guard', 0, true);
+        if (this.onLand) this.onLand(impact, dead);
       }
     }
 
-    // Pose timer recovery
-    if (this.animTime > 0) {
-      this.animTime -= delta;
-      if (this.animTime <= 0 && this.health > 0) {
-        this.setPose('idle');
-      }
+    // Pose timer returns to guard
+    if (this.poseTimer > 0) {
+      this.poseTimer -= delta;
+      if (this.poseTimer <= 0 && this.pose !== 'knockdown') this.pose = 'guard';
     }
 
-    // Procedural Idle bobbing / martial arts guard breathing
-    let bob = 0;
-    if (this.currentPose === 'idle' && !this.isAirborne) {
-      bob = Math.sin(Date.now() * 0.007) * 0.05;
-    }
-
-    this.mesh.position.y = 1.3 + this.y + bob;
-
-    // Scale shadow based on altitude
-    const shadowScale = Math.max(0.2, 1.0 - this.y * 0.15);
-    this.shadowMesh.scale.set(shadowScale, shadowScale, shadowScale);
-    this.shadowMesh.material.opacity = Math.max(0.1, 0.85 - this.y * 0.12);
-
-    this.updatePosition();
+    this.render(delta);
+    this.syncTransform();
   }
 
-  updatePosition() {
-    this.group.position.set(this.x, 0, this.z);
+  buildTarget() {
+    let poseName = this.pose;
+    if (this.isAirborne && (poseName === 'guard' || poseName === 'walk')) {
+      poseName = this.isHero || this.hover ? 'jump' : 'air';
+    }
+    const target = { ...POSES[poseName] };
+    const t = this.time;
+
+    if (poseName === 'guard') {
+      if (this.walking && !this.isAirborne) {
+        const p = this.walkPhase;
+        const f = Math.sin(p);
+        const lift = Math.max(0, Math.cos(p));
+        const lift2 = Math.max(0, -Math.cos(p));
+        Object.assign(target, POSES.walk);
+        target.fT = 8 + 38 * f;
+        target.fS = target.fT - 8 - 40 * lift;
+        target.gT = 8 - 38 * f;
+        target.gS = target.gT - 8 - 40 * lift2;
+        target.aU = 42 - 30 * f;
+        target.bU = 22 + 30 * f;
+      } else {
+        const b = Math.sin(t * 5.2);
+        target.lean += b * 2;
+        target.fT += b * 2.5;
+        target.gT -= b * 2;
+        target.aF += b * 4;
+      }
+    }
+
+    if (poseName === 'charge' || poseName === 'charge2') {
+      target.lean += Math.sin(t * 70) * 1.4;
+      target.aU += Math.sin(t * 55) * 3;
+    }
+    if (poseName === 'air') {
+      target.rot = Math.max(-85, Math.min(55, -this.vy * 5));
+    }
+    if (poseName === 'jump' && !this.hover) {
+      target.lean += Math.max(-20, Math.min(20, -this.vy * 1.5));
+    }
+    return target;
+  }
+
+  render(delta) {
+    if (this.walking && !this.isAirborne) this.walkPhase += delta * (6 + Math.abs(this.walkSpeed) * 2.4);
+
+    const target = this.buildTarget();
+    const sharp = SNAP_POSES.has(this.pose) ? 36 : this.pose === 'knockdown' ? 24 : 20;
+    blendPose(this.state, this.pose, Math.max(delta, 0.0001), sharp, target);
+
+    let face = 'normal';
+    if (this.pose === 'hurt') face = 'hurt';
+    else if (this.pose === 'knockdown') face = 'ko';
+    else if (SHOUT_POSES.has(this.pose)) face = 'shout';
+
+    this.anchors = drawStickman(
+      this.canvas,
+      this.state,
+      {
+        isHero: this.isHero,
+        variant: this.variant,
+        form: this.isHero ? this.form : 'base',
+        face,
+        time: this.time,
+        flash: this.flash,
+        bigHair: this.bigHair
+      },
+      makeCanvas,
+      this.scratch
+    );
+    this.texture.needsUpdate = true;
+  }
+
+  syncTransform() {
+    this.group.position.set(this.x, 0, 0);
+    this.mesh.position.y = MESH_CENTER_Y + this.y;
     this.mesh.scale.x = this.facing;
+
+    const alt = Math.max(0, this.y);
+    const s = Math.max(0.3, 1 - alt * 0.13);
+    this.shadowMesh.position.x = this.x;
+    this.shadowMesh.scale.set(s, s, s);
+    this.shadowMesh.material.opacity = Math.max(0.15, 0.9 - alt * 0.14);
+  }
+
+  // Back-compat with the old billboard API
+  updatePosition() {
+    this.syncTransform();
+  }
+
+  // World-space point on the body (feet origin = fighter.x, ground). name: head|handF|handB|footF|footB|sh|hip
+  anchor(name) {
+    const p = this.anchors && this.anchors[name];
+    if (!p) return { x: this.x, y: this.y + 1.1 };
+    const [wx, wy] = pxToWorld(p[0], p[1], this.facing);
+    return { x: this.x + wx, y: this.y + wy };
   }
 }

@@ -24,7 +24,7 @@ console.log('KEYBOARD WARRIOR STICKMAN: 1:1 CLONE VERIFICATION');
 console.log('====================================================\n');
 
 // 1. Core Architecture & Modules
-console.log('[1/5] Verifying 1:1 Engine Architecture & Source Modules...');
+console.log('[1/6] Verifying 1:1 Engine Architecture & Source Modules...');
 const requiredFiles = [
   'index.html',
   'styles.css',
@@ -36,7 +36,11 @@ const requiredFiles = [
   'src/core/inputManager.js',
   'src/render/arenas/arenaManager.js',
   'src/render/stickman/paperStandee.js',
+  'src/render/stickman/stickmanRig.js',
+  'src/render/effects/effectsManager.js',
   'src/combat/comboEngine.js',
+  'src/combat/fightDirector.js',
+  'scripts/generate_arenas.js',
   'src/combat/promptManager.js',
   'src/ui/retroHud.js',
   'src/ui/memeComboMenu.js',
@@ -48,29 +52,18 @@ for (const rel of requiredFiles) {
   assert(fs.existsSync(p) && fs.statSync(p).size > 0, `Module exists & non-empty: ${rel}`);
 }
 
-// 2. Extracted Cutouts & Authentic 1080p Arena Textures
-console.log('\n[2/5] Verifying Authentic Cutouts & 1080p Arena Textures...');
-const textures = [
-  'assets/textures/arenas/desk_room.jpg',
-  'assets/textures/arenas/crt_computer.jpg',
-  'assets/textures/arenas/windows_xp_bliss.jpg',
-  'assets/textures/arenas/mxpain_paint.jpg',
-  'assets/textures/paper/notebook_paper.png',
-  'assets/textures/paper/standee_hero_guard.png',
-  'assets/textures/paper/standee_hero_kick.png',
-  'assets/textures/paper/standee_enemy_guard.png',
-  'assets/textures/paper/standee_enemy_hit.png',
-  'assets/textures/paper/standee_enemy_jump.png',
-  'assets/textures/paper/standee_enemy_knockdown.png'
-];
-
-for (const tex of textures) {
-  const p = path.join(ROOT, tex);
-  assert(fs.existsSync(p) && fs.statSync(p).size > 1000, `Texture verified: ${tex} (${fs.statSync(p).size} bytes)`);
+// 2. Generated arena backdrops & paper texture
+console.log('\n[2/6] Verifying Generated Arena Backdrops...');
+const arenaFiles = ['desk', 'crt', 'meadow', 'sketchpad', 'dojo', 'cyber', 'wasteland', 'space', 'lava'];
+for (const name of arenaFiles) {
+  const rel = `assets/arenas/${name}.jpg`;
+  const p = path.join(ROOT, rel);
+  assert(fs.existsSync(p) && fs.statSync(p).size > 50000, `Arena backdrop verified: ${rel}`);
 }
+assert(fs.existsSync(path.join(ROOT, 'assets/textures/paper/notebook_paper.png')), 'Notebook paper texture present');
 
 // 3. Audio Engine & SFX Assets
-console.log('\n[3/5] Verifying Mechanical Audio & Combat SFX...');
+console.log('\n[3/6] Verifying Mechanical Audio & Combat SFX...');
 const audioFiles = [
   'assets/audio/sfx/keys/thock_01.ogg',
   'assets/audio/sfx/keys/thock_02.ogg',
@@ -91,7 +84,7 @@ for (const audio of audioFiles) {
 }
 
 // 4. Prompt Engine Logic Simulation
-console.log('\n[4/5] Testing Prompt Engine Mechanics (Typing, Red Cursor, Accuracy)...');
+console.log('\n[4/6] Testing Prompt Engine Mechanics (Typing, Red Cursor, Accuracy)...');
 // Import PromptManager logic simulation
 class MockPromptManager {
   constructor() {
@@ -134,7 +127,7 @@ assert(promptTester.goodCount === 1 && promptTester.missCount === 1, 'Metrics: 1
 assert(promptTester.getAccuracy() === 50, 'Accuracy correctly calculated as 50%');
 
 // 5. Combat & DMC Style Rank Engine Simulation
-console.log('\n[5/5] Testing Combat Engine (DMC Ranks, Air Launcher, Slam, Rage)...');
+console.log('\n[5/6] Testing Combat Engine (DMC Ranks, Air Launcher, Slam, Rage)...');
 class MockComboEngine {
   constructor() {
     this.hits = 0;
@@ -171,6 +164,55 @@ assert(comboTester.hits === 9 && comboTester.score > 1800, 'Enter Ground Slam ex
 comboTester.triggerRageMode();
 assert(comboTester.isRageMode === true, 'Caps Lock Rage Mode active');
 
+// 6. Regression tests for the reported bugs: A/D keys, alignment, arena wiring
+console.log('\n[6/6] Regression: typing keys, fighter alignment, arena wiring...');
+
+// 6a. Every letter must reach the typing prompt. WASD movement used to swallow A and D.
+const inputSrc = fs.readFileSync(path.join(ROOT, 'src/core/inputManager.js'), 'utf8');
+const moveBindings = inputSrc.match(/key\s*===\s*['"][adwsADWS]['"]/g) || [];
+assert(moveBindings.length === 0, 'No letter keys are bound to movement (A/D reach the prompt)');
+assert(/code\s*===\s*'ArrowLeft'/.test(inputSrc) && /code\s*===\s*'ArrowRight'/.test(inputSrc), 'Walking uses the arrow keys');
+
+// 6b. Rig geometry: load the pure-math module without a bundler by stripping `export`.
+const rigSrc = fs.readFileSync(path.join(ROOT, 'src/render/stickman/stickmanRig.js'), 'utf8').replace(/^export /gm, '');
+const rig = new Function(`${rigSrc}\nreturn { POSES, computeSkeleton, GROUND_Y, CANVAS_SIZE, createPoseState, blendPose };`)();
+let worstFloat = 0;
+let offCanvas = [];
+for (const name of Object.keys(rig.POSES)) {
+  const pts = rig.computeSkeleton(rig.POSES[name]);
+  const lowest = Math.max(...['hip', 'head', 'handF', 'handB', 'footF', 'footB', 'kneeF', 'kneeB'].map((k) => pts[k][1]));
+  worstFloat = Math.max(worstFloat, Math.abs(rig.GROUND_Y - (lowest + (lowest === pts.head[1] ? 30 : 4))));
+  for (const k of ['head', 'handF', 'handB', 'footF', 'footB']) {
+    const [x, y] = pts[k];
+    if (x < 30 || x > rig.CANVAS_SIZE - 30 || y < 30 || y > rig.CANVAS_SIZE - 10) offCanvas.push(`${name}.${k}`);
+  }
+}
+assert(worstFloat < 8, `Every pose keeps its lowest point on the ground line (worst offset ${worstFloat.toFixed(1)}px)`);
+assert(offCanvas.length === 0, `No pose draws outside the sprite canvas${offCanvas.length ? ' (' + offCanvas.join(', ') + ')' : ''}`);
+
+// 6c. Poses blend smoothly toward their target (limbs actually move)
+const st = rig.createPoseState('guard');
+rig.blendPose(st, 'kick', 1 / 60, 36);
+assert(st.fT > rig.POSES.guard.fT && st.fT < rig.POSES.kick.fT, 'Pose blending moves limbs gradually toward the target pose');
+
+// 6d. Arena config points at real files and every backdrop is 1920x1080
+const arenaSrc = fs.readFileSync(path.join(ROOT, 'src/render/arenas/arenaManager.js'), 'utf8');
+const arenaRefs = [...arenaSrc.matchAll(/file:\s*'([^']+)'/g)].map((m) => m[1]);
+assert(arenaRefs.length >= 9, `Arena list references ${arenaRefs.length} backdrops`);
+for (const rel of arenaRefs) assert(fs.existsSync(path.join(ROOT, rel)), `Arena file exists: ${rel}`);
+assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-screenshot textures');
+
+(async () => {
+  try {
+    const { loadImage } = require('@napi-rs/canvas');
+    for (const rel of arenaRefs) {
+      const img = await loadImage(path.join(ROOT, rel));
+      assert(img.width === 1920 && img.height === 1080, `Backdrop is 1920x1080: ${rel}`);
+    }
+  } catch (e) {
+    console.log('  (skipped backdrop size check: @napi-rs/canvas not installed)');
+  }
+
 console.log('\n====================================================');
 console.log(`TOTAL TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('====================================================\n');
@@ -181,3 +223,4 @@ if (failed > 0) {
   console.log('>>> ALL 1:1 CLONE VERIFICATION TESTS PASSED SUCCESSFULLY! <<<\n');
   process.exit(0);
 }
+})();

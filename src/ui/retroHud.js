@@ -1,4 +1,6 @@
 // Keyboard Warrior Stickman - Retro Steam Game HUD & Floating 3D/2.5D Prompt Overlay
+import { FORM_LABELS, FORM_COLORS } from '../render/effects/effectsManager.js';
+
 export class RetroHud {
   constructor(container) {
     this.container = container;
@@ -9,6 +11,19 @@ export class RetroHud {
     this.hudRoot = document.createElement('div');
     this.hudRoot.id = 'retro-hud-overlay';
     this.hudRoot.innerHTML = `
+      <!-- Top Fight Bars: player health, power form, enemy health -->
+      <div id="fight-bars">
+        <div class="bar-side hero-side">
+          <div class="bar-head"><span class="bar-name">YOU</span><span id="form-chip">BASE</span></div>
+          <div class="hp-track"><div id="hero-hp-fill" class="hp-fill"></div></div>
+        </div>
+        <div id="vs-badge">VS</div>
+        <div class="bar-side enemy-side">
+          <div class="bar-head"><span id="enemy-kos">KO 0</span><span class="bar-name" id="enemy-name">FOE #1</span></div>
+          <div class="hp-track"><div id="enemy-hp-fill" class="hp-fill"></div></div>
+        </div>
+      </div>
+
       <!-- Top / Center Floating In-Arena Prompt -->
       <div id="floating-prompt-container">
         <div id="floating-prompt-paper">
@@ -48,8 +63,8 @@ export class RetroHud {
         <span class="k-chip"><kbd>SPACE</kbd> AIR LAUNCH</span>
         <span class="k-chip"><kbd>ENTER</kbd> GROUND SLAM</span>
         <span class="k-chip"><kbd>TAB</kbd> DASH</span>
-        <span class="k-chip"><kbd>CAPS</kbd> RAGE FURY</span>
-        <span class="k-chip"><kbd>WASD</kbd> MOVE</span>
+        <span class="k-chip"><kbd>CAPS</kbd> / <kbd>\`</kbd> RAGE</span>
+        <span class="k-chip"><kbd>&larr;</kbd><kbd>&rarr;</kbd> MOVE</span>
       </div>
 
       <!-- Red Screen Flash on Miss / Error -->
@@ -76,28 +91,66 @@ export class RetroHud {
 
     this.flashEl = document.getElementById('screen-miss-flash');
     this.rageEl = document.getElementById('rage-aura-vignette');
+
+    this.heroHp = document.getElementById('hero-hp-fill');
+    this.enemyHp = document.getElementById('enemy-hp-fill');
+    this.formChip = document.getElementById('form-chip');
+    this.enemyName = document.getElementById('enemy-name');
+    this.enemyKos = document.getElementById('enemy-kos');
+    this.lastForm = null;
+    this.lastEnemyNumber = 0;
+  }
+
+  updateBars(hero, enemy, combo, director) {
+    this.heroHp.style.width = `${Math.max(0, (hero.health / hero.maxHealth) * 100)}%`;
+    this.enemyHp.style.width = `${Math.max(0, (enemy.health / enemy.maxHealth) * 100)}%`;
+    this.heroHp.classList.toggle('low', hero.health / hero.maxHealth < 0.3);
+
+    if (combo.form !== this.lastForm) {
+      this.lastForm = combo.form;
+      this.formChip.textContent = FORM_LABELS[combo.form];
+      this.formChip.style.color = FORM_COLORS[combo.form];
+      this.formChip.style.borderColor = FORM_COLORS[combo.form];
+      this.formChip.classList.toggle('powered', combo.form !== 'base');
+    }
+    if (director.enemyNumber !== this.lastEnemyNumber) {
+      this.lastEnemyNumber = director.enemyNumber;
+      this.enemyName.textContent = `FOE #${director.enemyNumber}`;
+    }
+    this.enemyKos.textContent = `KO ${combo.kills}`;
   }
 
   updatePrompt(promptManager) {
     const text = promptManager.currentText;
     const activeIdx = promptManager.charIndex;
 
+    // Characters are grouped into words so a narrow screen wraps between words, never inside one.
     let html = '';
+    let word = '';
+    const flushWord = () => {
+      if (word) html += `<span class="word">${word}</span>`;
+      word = '';
+    };
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
       const displayChar = char === ' ' ? '&nbsp;' : char;
-
+      let cell;
       if (i < activeIdx) {
-        // Already completed
-        html += `<span class="char char-done">${displayChar}</span>`;
+        cell = `<span class="char char-done">${displayChar}</span>`;
       } else if (i === activeIdx) {
         // Active target with STEAM RED CURSOR BOX!
-        html += `<span class="char char-active"><span class="red-cursor-box">${displayChar}</span></span>`;
+        cell = `<span class="char char-active"><span class="red-cursor-box">${displayChar}</span></span>`;
       } else {
-        // Pending
-        html += `<span class="char char-pending">${displayChar}</span>`;
+        cell = `<span class="char char-pending">${displayChar}</span>`;
+      }
+      if (char === ' ') {
+        flushWord();
+        html += cell;
+      } else {
+        word += cell;
       }
     }
+    flushWord();
     this.promptDisplay.innerHTML = html;
   }
 

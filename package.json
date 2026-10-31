@@ -7,7 +7,8 @@
     "start": "electron .",
     "serve": "node server.js",
     "build:app": "node scripts/package.js",
-    "test": "node test/verify_clone.js"
+    "test": "node test/verify_clone.js",
+    "generate:arenas": "node scripts/generate_arenas.js"
   },
   "keywords": [
     "typing",
@@ -21,6 +22,7 @@
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
+    "@napi-rs/canvas": "^1.1.0",
     "electron": "^44.6.0"
   },
   "dependencies": {

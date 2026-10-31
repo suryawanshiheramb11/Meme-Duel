@@ -1,48 +1,84 @@
 // Keyboard Warrior Stickman - Main Application Coordinator & Game Loop
-import * as THREE from 'three';
 import { audioSystem } from './audioSystem.js';
 import { ArenaManager } from '../render/arenas/arenaManager.js';
+import { EffectsManager } from '../render/effects/effectsManager.js';
 import { PaperStandee } from '../render/stickman/paperStandee.js';
 import { ComboEngine } from '../combat/comboEngine.js';
+import { FightDirector } from '../combat/fightDirector.js';
 import { PromptManager } from '../combat/promptManager.js';
 import { RetroHud } from '../ui/retroHud.js';
 import { MemeComboMenu } from '../ui/memeComboMenu.js';
 import { InputManager } from './inputManager.js';
 
+const MUSIC = {
+  wasteland: 'assets/audio/music/music_boss_heavy.ogg',
+  lava: 'assets/audio/music/music_boss_heavy.ogg',
+  cyber: 'assets/audio/music/music_boss_battle.ogg',
+  space: 'assets/audio/music/music_boss_battle.ogg',
+  dojo: 'assets/audio/music/music_calm_dojo_focus.ogg',
+  meadow: 'assets/audio/music/music_calm_dojo_focus.ogg',
+  desk: 'assets/audio/music/music_street_combat.ogg',
+  crt: 'assets/audio/music/music_street_combat.ogg',
+  sketchpad: 'assets/audio/music/music_street_combat.ogg',
+  greenscreen: 'assets/audio/music/music_street_combat.ogg'
+};
+
 export class App {
   constructor() {
     this.container = document.getElementById('game-container');
     this.lastTime = performance.now();
+    this.audioStarted = false;
+    this.pendingMusic = MUSIC.wasteland;
 
     // 1. Audio System
     this.audio = audioSystem;
 
-    // 2. 3D Arena & Perspective Renderer
+    // 2. Backdrop, camera & effects
     this.arena = new ArenaManager(this.container);
+    this.fx = new EffectsManager(this.arena.scene, this.arena.camera, this.container);
+    this.fx.setShake((amount) => this.arena.triggerScreenShake(amount));
+    this.arena.onArenaChange = (key, cfg) => {
+      this.fx.setAmbient(cfg.ambient);
+      this.pendingMusic = MUSIC[key] || MUSIC.desk;
+      if (this.audioStarted) this.audio.playMusic(this.pendingMusic);
+    };
+    this.arena.switchArena(this.arena.currentArenaKey);
 
-    // 3. 3D Cutout Paper Standees
+    // 3. Animated paper-cutout fighters
     this.hero = new PaperStandee(true, this.arena.scene);
     this.enemy = new PaperStandee(false, this.arena.scene);
+    this.hero.x = -0.55;
+    this.enemy.x = 0.5;
+    this.fx.attachAura(this.hero);
 
-    // 4. Combat & Style Rank Engine
-    this.combo = new ComboEngine(this.audio, this.arena);
+    // 4. Combat, style rank & power forms
+    this.combo = new ComboEngine(this.audio, this.arena, this.fx);
+    this.combo.bindFighters(this.hero, this.enemy);
 
-    // 5. Floating Prompt Engine
-    this.prompt = new PromptManager(() => {
-      // Callback on sentence complete
-      this.combo.addStylePoints(60);
-      this.audio.playSpecialKey('enter');
-      this.arena.triggerScreenShake(0.4);
+    // 5. Enemy AI, spacing & camera focus
+    this.director = new FightDirector({
+      hero: this.hero,
+      enemy: this.enemy,
+      combo: this.combo,
+      fx: this.fx,
+      arena: this.arena,
+      audio: this.audio
     });
 
-    // 6. Retro Steam HUD
+    // 6. Floating prompt engine: finishing a sentence fires the beam finisher
+    this.prompt = new PromptManager(() => {
+      this.combo.addStylePoints(60);
+      this.combo.triggerBeam(this.hero, this.enemy);
+    });
+
+    // 7. HUD
     this.hud = new RetroHud(this.container);
     this.hud.updatePrompt(this.prompt);
 
-    // 7. Meme Combo Maker Menu
-    this.menu = new MemeComboMenu(this.container, this.arena, this.prompt, this.audio);
+    // 8. Meme Combo Maker menu
+    this.menu = new MemeComboMenu(this.container, this.arena, this.prompt, this.audio, this.combo);
 
-    // 8. Low-Latency Keyboard Input Controller
+    // 9. Input
     this.input = new InputManager(
       this.prompt,
       this.combo,
@@ -53,20 +89,18 @@ export class App {
       this.enemy
     );
 
-    // Start background music on first user interaction
+    // Start background music on first user interaction (browsers block autoplay)
     const startAudioOnce = () => {
+      if (this.audioStarted) return;
+      this.audioStarted = true;
       this.audio.init();
-      this.audio.playMusic('assets/audio/music/music_street_combat.ogg');
+      this.audio.playMusic(this.pendingMusic);
       window.removeEventListener('keydown', startAudioOnce);
       window.removeEventListener('click', startAudioOnce);
     };
-    window.addEventListener('keydown', startAudioOnce, { once: true });
-    window.addEventListener('click', startAudioOnce, { once: true });
+    window.addEventListener('keydown', startAudioOnce);
+    window.addEventListener('click', startAudioOnce);
 
-    // Enemy auto-recovery & behavior loop
-    this.enemyRespawnTimer = 0;
-
-    // Launch 60 FPS Render Loop
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
   }
@@ -74,38 +108,35 @@ export class App {
   animate() {
     requestAnimationFrame(this.animate);
     const now = performance.now();
-    const delta = Math.min((now - this.lastTime) / 1000, 0.1);
+    const delta = Math.min((now - this.lastTime) / 1000, 0.05);
     this.lastTime = now;
 
-    // Update input (continuous horizontal walk)
-    this.input.update(delta);
-
-    // Update combat & prompt timers
-    this.combo.update(delta);
-    this.prompt.update(delta);
-
-    // Update paper cutout standees
-    this.hero.update(delta);
-    this.enemy.update(delta);
-
-    // Enemy knockdown recovery
-    if (this.enemy.health <= 0) {
-      this.enemyRespawnTimer += delta;
-      if (this.enemyRespawnTimer > 2.5) {
-        this.enemy.health = 100;
-        this.enemy.x = 1.8;
-        this.enemy.setPose('idle');
-        this.enemyRespawnTimer = 0;
-      }
+    // Slow motion on KOs and perfect dodges; impact freeze on hits.
+    let dt = delta;
+    if (this.combo.slowTimer > 0) {
+      this.combo.slowTimer -= delta;
+      dt = delta * 0.3;
+    }
+    let simDt = dt;
+    if (this.combo.hitStop > 0) {
+      this.combo.hitStop -= delta;
+      simDt = 0;
     }
 
-    // Update 3D Camera shake & scene
+    this.input.update(simDt);
+    this.combo.update(dt);
+    this.prompt.update(dt);
+
+    this.hero.update(simDt);
+    this.enemy.update(simDt);
+    this.director.update(simDt);
+
+    this.fx.update(dt, this.arena.camX);
     this.arena.update(delta);
 
-    // Update UI HUD metrics
     this.hud.updateMetrics(this.prompt, this.combo);
+    this.hud.updateBars(this.hero, this.enemy, this.combo, this.director);
 
-    // Render WebGL frame
     this.arena.render();
   }
 }
@@ -122,4 +153,3 @@ if (document.readyState === 'loading') {
 } else {
   bootApp();
 }
-

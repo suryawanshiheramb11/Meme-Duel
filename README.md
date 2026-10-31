@@ -2,48 +2,44 @@
 
 > **An authentic 1:1 open-source clone of the Steam beat 'em up phenomenon [Keyboard Warrior Stickman: Typing Beat 'Em Up](https://store.steampowered.com/app/4691530/Keyboard_Warrior_Stickman__Typing_Beat_Em_Up/) (by Good Knight Collective / itch.io Meme Combo Maker).**
 
-Built with **Three.js WebGL 2.5D perspective rendering**, **crumpled notebook paper cutout stickmen standees**, **real-time contact drop shadows**, **low-latency Cherry MX mechanical keyboard audio**, and **Devil May Cry spectacle fighter combat**.
+Built with **Three.js WebGL 2.5D rendering**, **animated die-cut notebook-paper stickmen**, **power-up auras and glowing hair**, **ten original arenas**, **low-latency mechanical keyboard audio**, and **Devil May Cry style combat**.
 
 ---
 
-## 🎮 Core Gameplay & Authentic Parity Features
+## 🎮 What's in the game
 
-### 1. 📜 2.5D Notebook Paper Cutout Standee Engine (60 FPS)
-- **Torn & Crumpled Ruled Paper Standees**: Faithful recreation of the viral stickman animation style with transparent chroma-keyed notebook cutouts.
-- **Physical Contact Drop Shadows**: Standees project dynamic elliptical contact shadows onto the desk and floor surfaces in true 3D perspective.
-- **Airborne Physics & Hit-Stops**: Gravity, air launch arcs, dive slams, and 60 FPS impact frame freezes (*hit-stops*).
+### 1. 📜 Animated paper-cutout fighters (60 FPS)
+- Stickmen are **drawn live from a skeleton** (head, torso, two-segment arms and legs) and die-cut from ruled, crumpled notebook paper, so every limb really moves: guard, walk cycle, jabs, cross, kick, uppercut, dive slam, hurt, knock-down, dash and power-up poses.
+- **Planted on the floor**: the lowest point of every pose is pinned to the ground line, and backdrops share one floor height, so nothing floats or clips.
+- **Real contact**: hits make the hero lunge into range, the enemy flashes, slides back, and walks in to fight again. Air launches pop the enemy up while the hero rises with them to keep the juggle going.
+- **A living enemy**: it runs in from off-screen, chases, winds up and strikes. Typos invite a counter-attack; a well-timed **Tab** dodge is rewarded with slow motion. Each knockout brings a tougher foe with new gear (glasses, headband, mohawk, horns).
 
-### 2. 🏟️ 5 Authentic Arenas / Stages
-1. **The Wooden Desk**: Battle directly on the office desk in front of the PC keyboard and mousepad.
-2. **Retro CRT Computer**: Authentic beige 90s/2000s PC monitor setup.
-3. **Windows XP Bliss**: The legendary rolling green hills and blue sky.
-4. **untitled - MXPain**: Classic nostalgic MS Paint canvas window.
-5. **Green Screen Studio**: Pure `#00ff00` chroma-key backdrop built for content creators to record TikToks, YouTube Shorts, and viral video memes.
+### 2. ⚡ Power forms: glowing hair, auras and lightning
+Style rank drives the hero's transformation (or force one from the menu):
 
-### 3. 🎯 Floating Notebook Prompt with Red Cursor Box
-- Prompts float directly above the combat arena on ruled notebook paper.
-- **Authentic Red Rectangular Cursor Box**: Highlights the exact active letter to type with a red pulsing neon outline.
-- **Real-Time Steam Metrics**: Bottom-left display tracking `[GOOD] / [MISS] / [% ACCURACY] / [TIME]`, plus `000,123` formatted score.
+| Rank | Form | Look |
+| :--- | :--- | :--- |
+| D - B | Base | White cap |
+| A, S | **Golden Rage** | Spiky gold hair, flame aura, rising embers |
+| SS | **Blue Surge** | Blue hair, blue aura, crackling lightning |
+| SSS | **Silver Instinct** | Silver hair, white aura, afterimage trail |
 
-### 4. ⌨️ Physical Spectacle Control Keys
-- **Spacebar**: **Air Launcher Kick!** Launches enemy paper standees high into the air for aerial juggle combos.
-- **Enter**: **Ground Slam Finisher!** Spikes airborne enemies down into the desk with screen-shattering impact.
-- **Tab**: **Dash / Teleport Evasion!** Evasive slide to reposition.
-- **Caps Lock**: **Rage Fury Mode!** Red vignette aura, double damage, rapid-fire strikes.
-- **WASD / Arrow Keys**: Walk and reposition horizontally across the desk plane.
+Powering up triggers a charge pose, ground shockwave, flying debris, a screen flash and a callout. Forms also scale damage and recolour hit sparks and the beam.
 
-### 5. ⚡ Devil May Cry Style Rank & Combo Engine
-- Real-time DMC Style Rank: `D (DISMAL)` → `C (CRAZY)` → `B (BADASS)` → `A (APOCALYPTIC)` → `S (SAVAGE)` → `SS (SICK SKILLS)` → `SSS (SMOKIN' SEXY STYLE!)`.
-- Dynamic Style decay meter and hit counter multiplier.
+### 3. 💥 More effects
+- **Beam finisher**: complete a sentence to charge an energy orb and fire a screen-wide beam.
+- Hit sparks, shockwave rings, ground craters, dust, speed lines, afterimages, screen shake, punch zoom, hit-stop and KO slow motion.
+- Floating combat text (CRIT!, FINISHER!, AIR LAUNCH!, GROUND SLAM!, K.O.!).
+- Per-arena ambience: dust, petals, rain, embers, stars, pollen.
 
-### 6. 🔊 Ultra-Low Latency Mechanical Keyboard Audio
-- Web Audio API buffer engine with randomized Cherry MX switch thocks, error buzzers, combat punch/kick impacts, whooshes, and adaptive background music.
+### 4. 🏟️ Ten arenas (Meme Combo Maker menu, ESC)
+Rocky Wasteland, Sunset Dojo, Neon Rooftop, Volcano Pit, Orbital Platform, Rolling Meadow, The Desk, Retro CRT Grid, Sketchpad, and a pure `#00ff00` **Green Screen** for recording. Backdrops are original art generated by `npm run generate:arenas`, and each arena picks fitting music.
 
-### 7. 🛠️ Meme Combo Maker Menu (ESC / Top Bar)
-- Custom sentence input: type or paste custom text/memes.
-- One-click arena switcher.
-- Instant preset meme phrases (*"THIS IS A TYPING GAME."*, *"I AM THE STORM THAT IS APPROACHING"*, *"STANDING HERE I REALIZE"*, *"RULES OF NATURE"*, *"SKIBIDI TOILET IN OHIO"*).
-- Audio and volume sliders.
+### 5. ⌨️ Controls that never fight the typing
+Every letter and symbol belongs to the prompt. Walking uses the arrow keys only (WASD used to swallow **A** and **D**).
+
+### 6. ⚡ DMC-style rank & combo engine
+`D (DISMAL)` to `SSS (SMOKIN' SEXY STYLE!)` with a decaying style meter, a hit counter and a score multiplier. Fighter health bars sit at the top.
 
 ---
 
@@ -61,12 +57,19 @@ npm run serve
 ```
 Open your browser at `http://localhost:3000`.
 
-### 3. Run Automated 1:1 Verification Test Suite
+### 3. Run the Automated Verification Test Suite
 ```bash
 npm test
 ```
 
-### 4. Build Standalone Desktop Executable (.exe)
+### 4. Regenerate the arena backdrops
+```bash
+npm run generate:arenas            # all ten
+node scripts/generate_arenas.js dojo lava   # just some
+```
+Backdrops are painted procedurally into `assets/arenas/` (needs the `@napi-rs/canvas` dev dependency). Each keeps its floor at 62% of the image height; keep that if you add your own.
+
+### 5. Build Standalone Desktop Executable (.exe)
 ```bash
 npm run build:app
 ```
@@ -79,16 +82,18 @@ Packages the complete standalone portable executable at:
 
 | Key | Action |
 | :--- | :--- |
-| **A-Z / 0-9 / Symbols** | Type prompt characters & execute light/heavy combat strikes |
-| **Spacebar** | Air Launcher Kick *(launches enemy into airborne juggle)* |
-| **Enter** | Ground Slam Finisher *(spikes airborne enemy into desk)* |
-| **Tab** | Evasive Dash |
-| **Caps Lock** | Toggle Rage Fury Mode *(red aura, 2x damage)* |
-| **A / D or Left / Right** | Walk / Reposition standee |
-| **ESC** | Open / Close Meme Combo Maker & Arena Switcher |
-| **F11** | Toggle Fullscreen |
+| **A-Z / 0-9 / Symbols** | Type prompt characters; each correct key throws a strike |
+| **Spacebar** | Air Launcher *(launches the enemy; the hero floats up to juggle)*. Types a space when the prompt needs one |
+| **Enter** | Ground Slam *(spikes an airborne enemy into the floor)* |
+| **Tab** | Dash: closes the gap when far, dodges back when close (brief invulnerability) |
+| **Caps Lock** or **`** | Toggle Rage *(red aura, extra damage, at least Golden Rage)* |
+| **Left / Right arrows** | Walk |
+| **ESC** | Meme Combo Maker: arena, power form, custom phrase, volume |
+| **F11** | Toggle fullscreen (desktop app) |
+
+Finish a sentence to fire the **beam finisher**.
 
 ---
 
 ## 📄 License
-MIT Open Source License. Assets and fan homage inspired by Good Knight Collective's *Keyboard Warrior Stickman*.
+MIT Open Source License. Gameplay is a fan homage inspired by Good Knight Collective's *Keyboard Warrior Stickman*. Fighters and arenas are drawn in code by this project.

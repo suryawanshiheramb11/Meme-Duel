@@ -1,10 +1,21 @@
 // Keyboard Warrior Stickman - Authentic "Meme Combo Maker" & Arena Switcher Menu
+import { ARENAS } from '../render/arenas/arenaManager.js';
+
+const FORM_CHOICES = [
+  ['auto', 'Auto (by rank)'],
+  ['base', 'Base'],
+  ['ssj', 'Golden Rage'],
+  ['blue', 'Blue Surge'],
+  ['ui', 'Silver Instinct']
+];
+
 export class MemeComboMenu {
-  constructor(container, arenaManager, promptManager, audioSystem) {
+  constructor(container, arenaManager, promptManager, audioSystem, comboEngine) {
     this.container = container;
     this.arena = arenaManager;
     this.prompt = promptManager;
     this.audio = audioSystem;
+    this.combo = comboEngine;
     this.isOpen = false;
 
     this.createDomElements();
@@ -33,27 +44,27 @@ export class MemeComboMenu {
             <div class="menu-section">
               <label class="section-title">SELECT ARENA / STAGE</label>
               <div class="arena-grid">
-                <button class="arena-btn active" data-arena="desk">
-                  <div class="arena-thumb desk-thumb"></div>
-                  <span>The Desk Room</span>
-                </button>
-                <button class="arena-btn" data-arena="crt">
-                  <div class="arena-thumb crt-thumb"></div>
-                  <span>Retro CRT PC</span>
-                </button>
-                <button class="arena-btn" data-arena="bliss">
-                  <div class="arena-thumb bliss-thumb"></div>
-                  <span>Windows XP Bliss</span>
-                </button>
-                <button class="arena-btn" data-arena="mxpain">
-                  <div class="arena-thumb mxpain-thumb"></div>
-                  <span>untitled - MXPain</span>
-                </button>
-                <button class="arena-btn gs-btn" data-arena="greenscreen">
-                  <div class="arena-thumb gs-thumb"></div>
-                  <span>Green Screen (Rec)</span>
-                </button>
+                ${Object.entries(ARENAS)
+                  .map(
+                    ([key, cfg]) => `
+                <button class="arena-btn${key === this.arena.currentArenaKey ? ' active' : ''}" data-arena="${key}">
+                  <div class="arena-thumb" style="${cfg.file ? `background-image:url('${cfg.file}')` : `background-color:#00ff00`}"></div>
+                  <span>${cfg.name}</span>
+                </button>`
+                  )
+                  .join('')}
               </div>
+            </div>
+
+            <!-- Section: Power Form -->
+            <div class="menu-section">
+              <label class="section-title">POWER FORM (GLOWING HAIR &amp; AURA)</label>
+              <div class="form-row">
+                ${FORM_CHOICES.map(
+                  ([key, label]) => `<button class="form-btn${key === 'auto' ? ' active' : ''}" data-form="${key}">${label}</button>`
+                ).join('')}
+              </div>
+              <span class="tip-text">Auto powers up as your style rank climbs: A = gold, SS = blue, SSS = silver. CAPS LOCK or the backtick key forces at least gold.</span>
             </div>
 
             <!-- Section 2: Custom Meme Phrase -->
@@ -104,6 +115,7 @@ export class MemeComboMenu {
     this.customInput = document.getElementById('custom-phrase-input');
     this.arenaBtns = this.menuRoot.querySelectorAll('.arena-btn');
     this.phraseTags = this.menuRoot.querySelectorAll('.phrase-tag');
+    this.formBtns = this.menuRoot.querySelectorAll('.form-btn');
   }
 
   bindEvents() {
@@ -126,6 +138,15 @@ export class MemeComboMenu {
         this.arenaBtns.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         this.arena.switchArena(arenaKey);
+      });
+    });
+
+    // Power form picker
+    this.formBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.formBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (this.combo) this.combo.setFormOverride(btn.dataset.form);
       });
     });
 

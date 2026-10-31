@@ -1,189 +1,164 @@
-// Keyboard Warrior Stickman - Authentic 5-Arena 3D Scene & Perspective Camera System
+// Keyboard Warrior Stickman - arena backdrops, camera rig and screen shake.
+//
+// Layout contract (this is what keeps everything aligned):
+//  * every backdrop image is 16:9 with its floor starting at HORIZON_FRAC of the image height
+//  * the camera looks straight ahead (no pitch) and is placed so fighters' feet land at
+//    FEET_FRAC of the screen height, i.e. comfortably inside the floor area
+//  * the backdrop is "cover" fitted to the camera frustum, so image fractions equal screen fractions
 import * as THREE from 'three';
+
+export const HORIZON_FRAC = 0.62;
+export const FEET_FRAC = 0.76;
+
+export const ARENAS = {
+  wasteland:  { name: 'Rocky Wasteland',  file: 'assets/arenas/wasteland.jpg', ambient: 'dust' },
+  dojo:       { name: 'Sunset Dojo',      file: 'assets/arenas/dojo.jpg',      ambient: 'petals' },
+  cyber:      { name: 'Neon Rooftop',     file: 'assets/arenas/cyber.jpg',     ambient: 'rain' },
+  lava:       { name: 'Volcano Pit',      file: 'assets/arenas/lava.jpg',      ambient: 'embers' },
+  space:      { name: 'Orbital Platform', file: 'assets/arenas/space.jpg',     ambient: 'stars' },
+  meadow:     { name: 'Rolling Meadow',   file: 'assets/arenas/meadow.jpg',    ambient: 'motes' },
+  desk:       { name: 'The Desk',         file: 'assets/arenas/desk.jpg',      ambient: 'motes' },
+  crt:        { name: 'Retro CRT Grid',   file: 'assets/arenas/crt.jpg',       ambient: 'none' },
+  sketchpad:  { name: 'Sketchpad',        file: 'assets/arenas/sketchpad.jpg', ambient: 'none' },
+  greenscreen:{ name: 'Green Screen',     file: null,                          ambient: 'none', color: 0x00ff00 }
+};
+
+const TAN_HALF_FOV = Math.tan(THREE.MathUtils.degToRad(22.5));
+const MIN_VISIBLE_WIDTH = 7.6; // world units that must always be on screen at the fighters' depth
+const BG_Z = -6;
 
 export class ArenaManager {
   constructor(canvasContainer) {
     this.container = canvasContainer;
-    this.currentArenaKey = 'desk';
+    this.currentArenaKey = null;
     this.shakeIntensity = 0;
-    this.shakeDecay = 5.0; // Decay rate per second
-    this.baseCameraPos = new THREE.Vector3(0, 2.4, 7.2);
-    this.baseLookAt = new THREE.Vector3(0, 1.2, 0);
+    this.shakeDecay = 5.0;
+    this.zoomKick = 0;
+    this.focusX = 0;
+    this.camX = 0;
+    this.camDist = 8.2;
+    this.camY = 1.77;
+    this.textureCache = new Map();
+    this.onArenaChange = null;
 
-    // Setup Three.js WebGL Renderer
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: 'high-performance',
-      alpha: false
-    });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.container.appendChild(this.renderer.domElement);
 
-    // Scene & Camera
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      100
-    );
-    this.camera.position.copy(this.baseCameraPos);
-    this.camera.lookAt(this.baseLookAt);
+    this.camera = new THREE.PerspectiveCamera(45, 16 / 9, 0.1, 100);
 
-    // Setup Lighting
-    this.setupLighting();
-
-    // Setup Arena Assets
     this.textureLoader = new THREE.TextureLoader();
-    this.arenaConfigs = {
-      desk: {
-        name: 'The Wooden Desk',
-        texture: 'assets/textures/arenas/desk_room.jpg',
-        floorColor: 0x4a3728,
-        bgPlaneSize: [18, 10],
-        bgPlanePos: [0, 3.5, -4]
-      },
-      crt: {
-        name: 'Retro CRT Computer',
-        texture: 'assets/textures/arenas/crt_computer.jpg',
-        floorColor: 0x333333,
-        bgPlaneSize: [18, 10],
-        bgPlanePos: [0, 3.5, -4]
-      },
-      bliss: {
-        name: 'Windows XP Bliss',
-        texture: 'assets/textures/arenas/windows_xp_bliss.jpg',
-        floorColor: 0x3b8526,
-        bgPlaneSize: [20, 11],
-        bgPlanePos: [0, 3.5, -5]
-      },
-      mxpain: {
-        name: 'untitled - MXPain',
-        texture: 'assets/textures/arenas/mxpain_paint.jpg',
-        floorColor: 0xd4d0c8,
-        bgPlaneSize: [18, 10],
-        bgPlanePos: [0, 3.5, -4]
-      },
-      greenscreen: {
-        name: 'Green Screen Studio',
-        texture: null,
-        floorColor: 0x00ff00,
-        bgColor: 0x00ff00,
-        bgPlaneSize: [22, 12],
-        bgPlanePos: [0, 3.5, -4]
-      }
-    };
-
-    this.createEnvironmentMeshes();
-    this.switchArena('desk');
-
-    // Handle Window Resize
-    window.addEventListener('resize', () => this.onWindowResize());
-  }
-
-  setupLighting() {
-    // Ambient light
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
-    this.scene.add(this.ambientLight);
-
-    // Directional light from top-front
-    this.dirLight = new THREE.DirectionalLight(0xfff5e6, 0.9);
-    this.dirLight.position.set(2, 8, 6);
-    this.dirLight.castShadow = true;
-    this.dirLight.shadow.mapSize.width = 1024;
-    this.dirLight.shadow.mapSize.height = 1024;
-    this.dirLight.shadow.camera.near = 0.5;
-    this.dirLight.shadow.camera.far = 20;
-    this.scene.add(this.dirLight);
-  }
-
-  createEnvironmentMeshes() {
-    // Backdrop Mesh (Background plane that displays the arena screenshot/image)
-    this.bgGeo = new THREE.PlaneGeometry(18, 10);
-    this.bgMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-    this.bgMesh = new THREE.Mesh(this.bgGeo, this.bgMat);
-    this.bgMesh.position.set(0, 3.5, -4);
+    this.bgMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, depthWrite: false });
+    this.bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 9), this.bgMat);
+    this.bgMesh.position.z = BG_Z;
+    this.bgMesh.renderOrder = -10;
     this.scene.add(this.bgMesh);
 
-    // Floor / Desk surface plane (Ground where standees walk and drop shadows)
-    const floorGeo = new THREE.PlaneGeometry(24, 12);
-    this.floorMat = new THREE.MeshStandardMaterial({
-      color: 0x222222,
-      roughness: 0.85,
-      metalness: 0.1
-    });
-    this.floorMesh = new THREE.Mesh(floorGeo, this.floorMat);
-    this.floorMesh.rotation.x = -Math.PI / 2;
-    this.floorMesh.position.y = 0;
-    this.floorMesh.receiveShadow = true;
-    this.scene.add(this.floorMesh);
-
-    // Grid helper on desk floor for retro digital arcade feel
-    this.gridHelper = new THREE.GridHelper(24, 24, 0x00f0ff, 0x334455);
-    this.gridHelper.position.y = 0.005;
-    this.gridHelper.material.opacity = 0.2;
-    this.gridHelper.material.transparent = true;
-    this.scene.add(this.gridHelper);
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.switchArena('wasteland');
   }
 
-  switchArena(arenaKey) {
-    const config = this.arenaConfigs[arenaKey] || this.arenaConfigs['desk'];
-    this.currentArenaKey = arenaKey;
+  // Aspect-aware camera: wide screens keep the default distance, narrow ones pull back.
+  layoutCamera() {
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    this.camera.aspect = aspect;
+    this.camera.updateProjectionMatrix();
+    this.camDist = Math.max(8.2, MIN_VISIBLE_WIDTH / (2 * TAN_HALF_FOV * aspect));
+    this.camY = (1 - 2 * FEET_FRAC) * -1 * TAN_HALF_FOV * this.camDist;
+    this.aspect = aspect;
+  }
 
-    if (arenaKey === 'greenscreen') {
-      this.renderer.setClearColor(0x00ff00, 1);
-      this.scene.background = new THREE.Color(0x00ff00);
+  fitBackground() {
+    const dist = this.camDist - BG_Z;
+    const visH = 2 * dist * TAN_HALF_FOV;
+    const visW = visH * this.aspect;
+    const needW = visW + 1.6; // slack for camera pan + parallax
+    const scale = Math.max(needW / 16, visH / 9);
+    this.bgMesh.scale.set(scale, scale, 1);
+    this.bgMesh.position.y = this.camY;
+  }
+
+  resize() {
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.layoutCamera();
+    this.fitBackground();
+  }
+
+  worldHalfWidth() {
+    return this.camDist * TAN_HALF_FOV * this.aspect;
+  }
+
+  switchArena(key) {
+    const cfg = ARENAS[key] || ARENAS.wasteland;
+    this.currentArenaKey = ARENAS[key] ? key : 'wasteland';
+    if (cfg.file === null) {
+      this.scene.background = new THREE.Color(cfg.color);
       this.bgMesh.visible = false;
-      this.floorMat.color.setHex(0x00ff00);
-      this.gridHelper.visible = true;
-      this.gridHelper.material.opacity = 0.15;
     } else {
       this.scene.background = new THREE.Color(0x05070c);
       this.bgMesh.visible = true;
-      this.gridHelper.visible = false;
-      this.floorMat.color.setHex(config.floorColor);
-
-      if (config.texture) {
-        this.textureLoader.load(config.texture, (texture) => {
-          texture.colorSpace = THREE.SRGBColorSpace;
-          this.bgMat.map = texture;
-          this.bgMat.needsUpdate = true;
-        });
-      }
+      this.loadTexture(cfg.file).then((tex) => {
+        if (ARENAS[this.currentArenaKey].file !== cfg.file) return; // user switched again
+        this.bgMat.map = tex;
+        this.bgMat.needsUpdate = true;
+      });
     }
+    if (this.onArenaChange) this.onArenaChange(this.currentArenaKey, cfg);
+  }
+
+  loadTexture(file) {
+    if (this.textureCache.has(file)) return this.textureCache.get(file);
+    const p = new Promise((resolve, reject) => {
+      this.textureLoader.load(
+        file,
+        (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.anisotropy = 4;
+          resolve(tex);
+        },
+        undefined,
+        reject
+      );
+    });
+    this.textureCache.set(file, p);
+    return p;
   }
 
   triggerScreenShake(intensity = 0.3) {
-    this.shakeIntensity = Math.min(1.0, this.shakeIntensity + intensity);
+    this.shakeIntensity = Math.min(1.2, this.shakeIntensity + intensity);
   }
 
-  onWindowResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  punchZoom(amount = 0.5) {
+    this.zoomKick = Math.min(1.5, this.zoomKick + amount);
+  }
+
+  setFocus(x) {
+    this.focusX = x;
   }
 
   update(delta) {
-    // Camera shake physics
-    if (this.shakeIntensity > 0) {
-      const offsetX = (Math.random() - 0.5) * this.shakeIntensity * 0.4;
-      const offsetY = (Math.random() - 0.5) * this.shakeIntensity * 0.4;
-      const offsetZ = (Math.random() - 0.5) * this.shakeIntensity * 0.2;
-      
-      this.camera.position.set(
-        this.baseCameraPos.x + offsetX,
-        this.baseCameraPos.y + offsetY,
-        this.baseCameraPos.z + offsetZ
-      );
-      this.shakeIntensity = Math.max(0, this.shakeIntensity - this.shakeDecay * delta);
-    } else {
-      this.camera.position.copy(this.baseCameraPos);
-    }
+    // Ease toward the midpoint between fighters, clamped so the backdrop edge never shows.
+    const target = THREE.MathUtils.clamp(this.focusX * 0.7, -3, 3);
+    this.camX += (target - this.camX) * Math.min(1, delta * 4);
 
-    this.camera.lookAt(this.baseLookAt);
+    this.zoomKick = Math.max(0, this.zoomKick - delta * 3.2);
+    const dist = this.camDist - this.zoomKick * 0.6;
+
+    let ox = 0, oy = 0, oz = 0;
+    if (this.shakeIntensity > 0) {
+      ox = (Math.random() - 0.5) * this.shakeIntensity * 0.4;
+      oy = (Math.random() - 0.5) * this.shakeIntensity * 0.4;
+      oz = (Math.random() - 0.5) * this.shakeIntensity * 0.2;
+      this.shakeIntensity = Math.max(0, this.shakeIntensity - this.shakeDecay * delta);
+    }
+    const cx = this.camX + ox;
+    const cy = this.camY + oy;
+    this.camera.position.set(cx, cy, dist + oz);
+    this.camera.lookAt(cx, cy, 0);
+
+    this.bgMesh.position.x = this.camX * 0.85;
   }
 
   render() {

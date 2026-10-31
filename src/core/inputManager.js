@@ -1,4 +1,7 @@
 // Keyboard Warrior Stickman - Low-Latency Input Manager & Special Keys Controller
+//
+// Every printable character belongs to the typing prompt. Walking uses the arrow keys only:
+// binding WASD would swallow A and D, which made those letters impossible to type.
 export class InputManager {
   constructor(promptManager, comboEngine, audioSystem, retroHud, memeMenu, hero, enemy) {
     this.prompt = promptManager;
@@ -26,6 +29,11 @@ export class InputManager {
   bindKeyboard() {
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
     window.addEventListener('keyup', (e) => this.onKeyUp(e));
+    // Releasing keys while the window is unfocused would leave the hero walking forever
+    window.addEventListener('blur', () => {
+      this.keysHeld.left = false;
+      this.keysHeld.right = false;
+    });
   }
 
   onKeyDown(e) {
@@ -36,24 +44,36 @@ export class InputManager {
 
     const key = e.key;
 
-    // Movement key interception
-    if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
+    // Movement: arrow keys only
+    if (e.code === 'ArrowLeft') {
+      e.preventDefault();
       this.keysHeld.left = true;
       return;
     }
-    if (key === 'ArrowRight' || key === 'd' || key === 'D') {
+    if (e.code === 'ArrowRight') {
+      e.preventDefault();
       this.keysHeld.right = true;
+      return;
+    }
+    if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+      e.preventDefault(); // keep the page from scrolling
+      return;
+    }
+
+    // Held keys shouldn't machine-gun strikes or specials
+    if (e.repeat) {
+      if (e.code === 'Tab' || e.code === 'Space' || e.code === 'Enter') e.preventDefault();
       return;
     }
 
     // Special spectacle keys
     if (e.code === 'Tab') {
       e.preventDefault(); // Don't lose focus
-      this.combo.triggerDash(this.hero, 1);
+      this.combo.triggerDash(this.hero, this.enemy);
       return;
     }
 
-    if (e.code === 'CapsLock') {
+    if (e.code === 'CapsLock' || e.code === 'Backquote') {
       e.preventDefault();
       this.combo.triggerRageMode();
       return;
@@ -71,7 +91,7 @@ export class InputManager {
       if (targetChar === ' ') {
         // Space advances the prompt!
         this.audio.playKeyClack(false);
-        const result = this.prompt.handleKeyPress(' ');
+        this.prompt.handleKeyPress(' ');
         this.combo.registerHit('heavy', this.hero, this.enemy);
         this.hud.updatePrompt(this.prompt);
       } else {
@@ -99,20 +119,19 @@ export class InputManager {
   }
 
   onKeyUp(e) {
-    const key = e.key;
-    if (key === 'ArrowLeft' || key === 'a' || key === 'A') {
-      this.keysHeld.left = false;
-    }
-    if (key === 'ArrowRight' || key === 'd' || key === 'D') {
-      this.keysHeld.right = false;
-    }
+    if (e.code === 'ArrowLeft') this.keysHeld.left = false;
+    if (e.code === 'ArrowRight') this.keysHeld.right = false;
   }
 
   update(delta) {
-    if (this.keysHeld.left) {
-      this.combo.moveHero(this.hero, -1, delta);
-    } else if (this.keysHeld.right) {
-      this.combo.moveHero(this.hero, 1, delta);
+    const hero = this.hero;
+    if (!hero) return;
+    if (this.keysHeld.left && !this.keysHeld.right) {
+      this.combo.moveHero(hero, -1, delta);
+    } else if (this.keysHeld.right && !this.keysHeld.left) {
+      this.combo.moveHero(hero, 1, delta);
+    } else {
+      hero.walking = false;
     }
   }
 }
