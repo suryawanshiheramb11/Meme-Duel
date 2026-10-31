@@ -61,6 +61,14 @@ export class Match {
     window.addEventListener(
       'keydown',
       (e) => {
+        if (this.state === 'ready') {
+          if (e.code === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (this.armed && !e.repeat) this.start();
+          }
+          return;
+        }
         if (this.state === 'finish') {
           this.feedCode(e);
           e.preventDefault();
@@ -93,7 +101,7 @@ export class Match {
 
   // Memes and typing stay live during a round; between rounds everything waits
   get isOpen() {
-    return this.state === 'intro' || this.state === 'between' || this.state === 'over' || this.state === 'finish' || this.state === 'fatal';
+    return this.state === 'ready' || this.state === 'intro' || this.state === 'between' || this.state === 'over' || this.state === 'finish' || this.state === 'fatal';
   }
 
   addPips(head) {
@@ -132,7 +140,18 @@ export class Match {
   }
 
   // ------------------------------------------------------------- flow
+  /** Solo fights wait on the game screen until you press Enter. */
+  waitForStart() {
+    this.state = 'ready';
+    this.director.paused = true;
+    this.armed = false;
+    setTimeout(() => (this.armed = true), 250); // the Enter that picked the level must not also start it
+    this.say('PRESS ENTER TO START', 'start', 0, '<small>READY?</small><b>PRESS <u>ENTER</u> TO START</b>');
+    this.banner.onclick = () => this.armed && this.start();
+  }
+
   start() {
+    this.banner.onclick = null;
     this.scores = { me: 0, foe: 0 };
     this.over.hidden = true;
     this.renderPips();

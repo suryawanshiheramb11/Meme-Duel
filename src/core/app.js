@@ -172,7 +172,7 @@ export class App {
     // Start screen: choose Easy / Medium / Hard. The bot stays put until you do.
     this.modeSelect = new ModeSelect(this.container, this.director.diffKey, (level) => {
       this.director.setDifficulty(level);
-      this.match.start();
+      this.match.waitForStart();
     });
     this.modeSelect.addArenaPicker(createArenaPicker(this.arena, { label: 'ARENA: where you fight' }));
     this.input.blockers.push(this.modeSelect); // only the menu and the mode picker capture the keyboard; memes never do
