@@ -77,7 +77,8 @@ export class ComboEngine {
     this.secretReadyAt = {};
     this.foundSecrets = loadFound();
     this.onSecretFound = null;
-    this.bulletTimer = 0; // seconds of "bullet time" left (the bot runs at quarter speed)
+    this.bulletTimer = 0;
+    this.buffs = { attack: 0, defense: 0 }; // seconds left of each tactical-mode buff
     this.memes = null; // meme reaction player, set by the app
     this.difficulty = null; // current bot level table, set by the fight director
     this.difficultyKey = 'medium';
@@ -104,7 +105,8 @@ export class ComboEngine {
   damageMultiplier() {
     // Holding guard trades offence for safety: you hit 40% softer
     const dazed = this.enemy && this.enemy.dazedUntil > performance.now() ? 1.5 : 1; // "look behind you" opening
-    return (this.isRageMode ? 1.6 : 1) * (FORM_DAMAGE[this.form] || 1) * (this.hero && this.hero.guarding ? 0.6 : 1) * dazed;
+    const buffed = this.buffs.attack > 0 ? 1.5 : 1; // tactical mode: attack buff
+    return (this.isRageMode ? 1.6 : 1) * (FORM_DAMAGE[this.form] || 1) * (this.hero && this.hero.guarding ? 0.6 : 1) * dazed * buffed;
   }
 
   sparkColor() {
@@ -601,6 +603,30 @@ export class ComboEngine {
     this.scheduled.push({ t: seconds, fn });
   }
 
+  // ------------------------------------------------------------- tactical buffs
+  /** kind: 'attack' | 'defense' | 'health' */
+  applyBuff(kind, hero) {
+    if (!hero) return;
+    const DURATION = 12;
+    if (kind === 'attack') {
+      this.buffs.attack = DURATION;
+      this.fx.floatText('ATTACK UP', hero.x, 3.3, { color: '#ff9a3c', size: 34, cls: 'fx-pop' });
+      this.fx.ringBurst(hero.x, 1.3, 3, 0xff9a3c, 0.4);
+    } else if (kind === 'defense') {
+      this.buffs.defense = DURATION;
+      this.fx.floatText('DEFENSE UP', hero.x, 3.3, { color: '#ecedf1', size: 34, cls: 'fx-pop' });
+      this.fx.ringBurst(hero.x, 1.3, 3, 0xecedf1, 0.4);
+    } else if (kind === 'health') {
+      const heal = Math.round(hero.maxHealth * 0.3);
+      hero.health = Math.min(hero.maxHealth, hero.health + heal);
+      this.fx.floatText(`+${heal} HEALTH`, hero.x, 3.3, { color: '#7dff9a', size: 34, cls: 'fx-pop' });
+      this.fx.hitSpark(hero.x, 1.4, { size: 1.4, color: 0x7dff9a, count: 14 });
+      this.fx.ringBurst(hero.x, 1.3, 3, 0x7dff9a, 0.4);
+    }
+    this.audio.playSound('streak_fire');
+    this.addStylePoints(30);
+  }
+
   // ------------------------------------------------------------- word & sentence payoffs
   // Finishing a word in the meme's catchphrase lands a bonus hit.
   registerWord(word, hero, enemy) {
@@ -864,6 +890,8 @@ export class ComboEngine {
 
   // ------------------------------------------------------------- frame update
   update(delta) {
+    if (this.buffs.attack > 0) this.buffs.attack -= delta;
+    if (this.buffs.defense > 0) this.buffs.defense -= delta;
     if (this.comboTimer > 0) {
       this.comboTimer -= delta;
       if (this.comboTimer <= 0) this.hits = 0;

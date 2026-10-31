@@ -928,3 +928,42 @@ html, body {
 #round-banner.start u { text-decoration: none; padding: 0 0.18em; color: #08080b; background: #ffd23a; }
 @keyframes start-blink { 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { #round-banner.start b { animation: none; } }
+
+
+/* Tactical mode: three meme cards, each with a buff */
+#tactical-choices {
+  position: absolute; top: 112px; left: 50%; transform: translateX(-50%); z-index: 21; pointer-events: none;
+  display: flex; gap: 14px; max-width: 96vw;
+}
+#tactical-choices[hidden] { display: none; }
+.tc {
+  position: relative; display: flex; flex-direction: column; gap: 3px; width: clamp(128px, 14vw, 196px); padding: 6px 6px 8px;
+  background: #ecedf1; color: #08080b; box-shadow: 4px 4px 0 #000; font-family: var(--font-mono);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  animation: tc-in 0.4s cubic-bezier(.2, 1.2, .4, 1) backwards;
+}
+.tc:nth-child(2) { animation-delay: 0.08s; }
+.tc:nth-child(3) { animation-delay: 0.16s; }
+@keyframes tc-in { from { transform: translateY(-40px); opacity: 0; } }
+.tc img, .tc-nothumb { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; }
+.tc-buff { font-family: var(--font-display); font-size: clamp(18px, 2.2vh, 24px); letter-spacing: 2px; line-height: 1; padding: 2px 6px 0; color: #08080b; width: fit-content; }
+.tc-attack .tc-buff { background: #ff9a3c; }
+.tc-defense .tc-buff { background: #08080b; color: #ecedf1; }
+.tc-health .tc-buff { background: #7dff9a; }
+.tc-eff { font-size: 10px; font-weight: bold; color: #4a5060; line-height: 1.2; }
+.tc-phrase { font-size: clamp(11px, 1.6vh, 13px); font-weight: bold; line-height: 1.25; letter-spacing: 0.5px; }
+.tc-first { background: rgba(255, 210, 58, 0.7); }
+.tc-first u { text-decoration: none; background: #08080b; color: #ffd23a; padding: 0 3px; margin-right: 1px; }
+.tc.dim { opacity: 0.28; transform: scale(0.92); }
+.tc.picked { transform: translateY(-4px) scale(1.04); outline: 3px solid #ffd23a; outline-offset: 2px; }
+.tac-hint { font-family: var(--font-display); font-size: clamp(18px, 2.6vh, 28px); letter-spacing: 3px; color: #08080b; }
+body.tactical #meme-queue { display: none; }
+body.tactical #floating-prompt-container { top: calc(112px + clamp(172px, 23vh, 250px)); }
+body.tactical #floating-prompt-paper { padding: 10px 28px 10px 54px; }
+body.tactical #prompt-text-display { font-size: clamp(22px, 3vw, 42px); }
+
+#buff-chips { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); z-index: 24; display: flex; gap: 8px; pointer-events: none; }
+.bc { padding: 2px 10px 0; font-family: var(--font-display); font-size: 18px; letter-spacing: 2px; color: #08080b; box-shadow: 3px 3px 0 #000; }
+.bc-attack { background: #ff9a3c; }
+.bc-defense { background: #ecedf1; }

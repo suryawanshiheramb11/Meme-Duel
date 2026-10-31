@@ -402,6 +402,9 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(/ACCESSORIES/.test(lockerSrc) && /headband/.test(lockerSrc) && /crown/.test(lockerSrc) && /export function buy/.test(lockerSrc), 'The store sells accessories (headband, crown, hats, glasses...)');
   assert(/drawHeadGear/.test(rd('src/render/stickman/stickmanRig.js')) && /currentGear/.test(rd('src/core/app.js')) && /t: 'gear'/.test(vsSrc), 'Equipped gear is drawn on your fighter and shown to your online opponent');
   assert(/rdy/.test(rd('src/ui/onlineLobby.js')) && /STUN_SERVERS/.test(netSrc) && fs.existsSync(path.join(ROOT, 'src/net/ice.json')), 'Online rooms have a ready-up lobby and a configurable TURN relay (src/net/ice.json)');
+  const promptSrc3 = rd('src/combat/promptManager.js');
+  assert(/rollChoices/.test(promptSrc3) && /distinct first letters|letters\.has/.test(promptSrc3) && /applyBuff/.test(rd('src/combat/comboEngine.js')), 'Tactical mode: three memes with different first letters, each a buff');
+  assert(/data-action="tactical"/.test(rd('index.html')) && /tactical:/.test(rd('src/landing/landing.js')), 'Tactical Mode is on the landing page');
   console.log('');
 
 console.log('\n====================================================');

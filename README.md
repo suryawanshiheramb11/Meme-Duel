@@ -42,7 +42,7 @@ Node 18 or newer is enough to serve it. The game is plain static files: there is
 | Command | What it does |
 | :--- | :--- |
 | `npm run serve` | Serves the game on port 3000. `PORT=4000 npm run serve` changes the port; `ROOT=web-dist npm run serve` previews the hosted build. |
-| `npm test` | Runs the full check suite (172 checks). See [Tests](#tests). |
+| `npm test` | Runs the full check suite (174 checks). See [Tests](#tests). |
 | `npm run build:web` | Builds the slim copy that gets hosted into `web-dist/`. See [Hosting](#hosting-on-vercel). |
 | `npm run fetch:memes` | Downloads, crops, compresses and tags the meme clips. Needs `ffmpeg`. See [Customising](#customising-the-game). |
 | `npm run generate:arenas` | Repaints the nine arena backgrounds. See [Customising](#customising-the-game). |
@@ -91,6 +91,18 @@ A match is **first to two round wins** (best of three). Every round opens with a
 Win the deciding round by KO and the screen says **FINISH HIM!**. You have six seconds to tap the fatality code: **↓ ↓ → ← then Shift**. A meme-card storm (or a beam) then blows your opponent into paper confetti. Miss the window and you still win, just without the style points. A round won without taking damage is a **FLAWLESS VICTORY**.
 
 ---
+
+## Tactical Mode
+
+A separate mode on the landing page. Instead of one phrase at a time, **three memes appear side by side**, each carrying a different buff:
+
+| Card | Buff |
+| :--- | :--- |
+| **Attack** | +50% damage for 12 seconds (and the meme's special move fires) |
+| **Defense** | 45% less damage taken for 12 seconds |
+| **Health** | heals 30% of your health |
+
+The three phrases always start with different letters, so **typing the first letter picks that meme** (the other two fade), and you keep typing its phrase. Finish it to get the buff, and a fresh three appear. Active buffs show as chips under the health bars. It is a solo fight against the bot, with the same rounds, arenas and store gear as Play vs Bot.
 
 ## The store
 
@@ -419,7 +431,7 @@ test/
 
 ## Tests
 
-`npm test` runs 172 checks in a few seconds (it also rebuilds `web-dist/`). They cover:
+`npm test` runs 174 checks in a few seconds (it also rebuilds `web-dist/`). They cover:
 
 - required files, the arena images (all 1920×1080) and audio assets;
 - prompt logic: typing, accuracy, word and sentence events, queue order;

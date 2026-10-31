@@ -42,6 +42,10 @@ export class RetroHud {
         </div>
       </div>
 
+      <!-- Tactical mode: three memes to pick from, each carrying a buff -->
+      <div id="tactical-choices" hidden></div>
+      <div id="buff-chips"></div>
+
       <!-- Every key you press slides up from the bottom centre -->
       <div id="key-stream" aria-hidden="true"></div>
 
@@ -114,6 +118,10 @@ export class RetroHud {
     this.queueEl = document.getElementById('meme-queue');
     this.lastQueueKey = null;
     this.keyStream = document.getElementById('key-stream');
+    this.tacticalEl = document.getElementById('tactical-choices');
+    this.buffChips = document.getElementById('buff-chips');
+    this.lastTacKey = null;
+    this.lastBuffKey = null;
     this.heroGhost = document.getElementById('hero-hp-ghost');
     this.enemyGhost = document.getElementById('enemy-hp-ghost');
     this.heroNum = document.getElementById('hero-hp-num');
@@ -163,6 +171,11 @@ export class RetroHud {
   }
 
   updatePrompt(promptManager) {
+    this.renderTactical(promptManager);
+    if (promptManager.tactical && !promptManager.chosen) {
+      this.promptDisplay.innerHTML = '<span class="tac-hint">TYPE THE FIRST LETTER OF A MEME TO PICK IT</span>';
+      return;
+    }
     const text = promptManager.currentText;
     const activeIdx = promptManager.charIndex;
 
@@ -195,6 +208,46 @@ export class RetroHud {
     flushWord();
     this.promptDisplay.innerHTML = html;
     this.renderQueue(promptManager);
+  }
+
+  // Tactical mode: three cards side by side. Each shows its meme, its buff and its phrase with the first
+  // letter marked, since that letter is what picks it. After picking, the other two fade.
+  renderTactical(p) {
+    document.body.classList.toggle('tactical', !!p.tactical);
+    this.tacticalEl.hidden = !p.tactical;
+    if (!p.tactical) return;
+    const key = p.choices.map((c) => c.phrase).join('|') + '|' + (p.chosen ? p.chosen.phrase : '-');
+    if (key === this.lastTacKey) return;
+    this.lastTacKey = key;
+    const BUFF = {
+      attack: ['ATTACK', '+50% damage for 12 s'],
+      defense: ['DEFENSE', '-45% damage taken for 12 s'],
+      health: ['HEALTH', 'Heal 30% of your health']
+    };
+    this.tacticalEl.innerHTML = p.choices
+      .map((c) => {
+        const state = p.chosen ? (p.chosen === c ? 'picked' : 'dim') : '';
+        const thumb = c.item.clip && c.item.clip.thumb ? `<img src="assets/memes/${c.item.clip.thumb}" alt="" />` : '<div class="tc-nothumb"></div>';
+        const first = c.phrase.split(' ')[0];
+        const rest = c.phrase.slice(first.length);
+        return `<div class="tc tc-${c.buff} ${state}">
+          ${thumb}
+          <span class="tc-buff">${BUFF[c.buff][0]}</span>
+          <span class="tc-eff">${BUFF[c.buff][1]}</span>
+          <span class="tc-phrase"><b class="tc-first"><u>${first[0]}</u>${first.slice(1)}</b>${rest}</span>
+        </div>`;
+      })
+      .join('');
+  }
+
+  updateBuffs(combo) {
+    const a = Math.max(0, Math.ceil(combo.buffs.attack));
+    const d = Math.max(0, Math.ceil(combo.buffs.defense));
+    const key = `${a}|${d}`;
+    if (key === this.lastBuffKey) return;
+    this.lastBuffKey = key;
+    this.buffChips.innerHTML =
+      (a ? `<span class="bc bc-attack">ATTACK UP ${a}s</span>` : '') + (d ? `<span class="bc bc-defense">DEFENSE UP ${d}s</span>` : '');
   }
 
   renderQueue(p) {
@@ -231,6 +284,7 @@ export class RetroHud {
   }
 
   updateMetrics(promptManager, comboEngine) {
+    this.updateBuffs(comboEngine);
     // Bottom-Left Steam HUD
     this.goodEl.textContent = promptManager.goodCount;
     this.missEl.textContent = promptManager.missCount;

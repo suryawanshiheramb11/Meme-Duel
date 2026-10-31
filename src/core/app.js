@@ -98,6 +98,14 @@ export class App {
     this.prompt = new PromptManager(
       (item) => {
         this.combo.addStylePoints(60);
+        const choice = this.prompt.completedChoice;
+        if (this.prompt.tactical && choice) {
+          // tactical: the card's buff, plus the meme; only the attack card also fires the special move
+          this.combo.applyBuff(choice.buff, this.hero);
+          if (choice.buff === 'attack') this.combo.triggerSpecial(this.hero, this.enemy, item);
+          else if (item.clip) this.memes.playClip(item.clip, { side: 'left', priority: 3, caption: item.phrase });
+          return;
+        }
         this.combo.triggerSpecial(this.hero, this.enemy, item);
       },
       (word) => this.combo.registerWord(word, this.hero, this.enemy)
@@ -118,6 +126,7 @@ export class App {
       const items = this.memes.clips.filter((c) => c.phrase).map((c) => ({ phrase: c.phrase, clip: c, move: c.move }));
       if (items.length) {
         this.prompt.setQueue(items);
+        if (this.tactical && !this.prompt.chosen) this.prompt.rollChoices(); // now with real memes
         this.hud.updatePrompt(this.prompt);
         prefetchUpcoming();
         this.memes.prefetchAllWhenIdle(); // everything else trickles in behind the scenes
@@ -147,6 +156,15 @@ export class App {
       this.hero,
       this.enemy
     );
+
+    // Tactical mode: pick one of three memes, each a different buff
+    this.tactical = (window.__memeDuel || {}).mode === 'tactical';
+    if (this.tactical) {
+      this.prompt.setTactical(true);
+      this.hud.updatePrompt(this.prompt);
+      const takeHit = this.hero.takeHit.bind(this.hero);
+      this.hero.takeHit = (damage, opts) => takeHit(this.combo.buffs.defense > 0 ? damage * 0.55 : damage, opts);
+    }
 
     // Rounds: first to two round wins
     this.match = new Match({

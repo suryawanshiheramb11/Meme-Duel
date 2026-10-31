@@ -37,6 +37,10 @@ export class PromptManager {
     this.queue = [];
     this.queuePos = 0;
     this.completed = 0;
+    this.tactical = false;
+    this.choices = [];
+    this.chosen = null;
+    this.completedChoice = null;
 
     // Performance metrics (matching Steam HUD: GOOD / MISS / % / TIME)
     this.goodCount = 0;
@@ -81,6 +85,7 @@ export class PromptManager {
     }
     this.charIndex = 0;
     this.completed = 0;
+    if (this.tactical) this.rollChoices();
     this.reset();
   }
 
@@ -130,7 +135,47 @@ export class PromptManager {
     return upTo.split(' ').pop();
   }
 
+  // ---- tactical mode: three memes offered at a time, each carrying a different buff
+  setTactical(on) {
+    this.tactical = !!on;
+    if (this.tactical) this.rollChoices();
+  }
+
+  // Three memes whose phrases start with different letters, so the first letter you type picks one.
+  rollChoices() {
+    const pool = (this.sourceItems && this.sourceItems.length >= 3
+      ? this.sourceItems
+      : this.defaultPrompts.map((phrase) => ({ phrase, clip: null, move: 'beam' }))
+    ).slice();
+    pool.sort(() => Math.random() - 0.5);
+    const picks = [];
+    const letters = new Set();
+    for (const it of pool) {
+      if (letters.has(it.phrase[0])) continue;
+      letters.add(it.phrase[0]);
+      picks.push(it);
+      if (picks.length === 3) break;
+    }
+    const buffs = ['attack', 'defense', 'health'].sort(() => Math.random() - 0.5);
+    this.choices = picks.map((item, i) => ({ item, phrase: item.phrase, buff: buffs[i] }));
+    this.chosen = null;
+    this.currentItem = null;
+    this.currentText = '';
+    this.charIndex = 0;
+  }
+
   handleKeyPress(key) {
+    if (this.tactical && !this.chosen) {
+      // Choosing: the first letter of a card's phrase picks that meme, then typing carries on through it
+      const k = key.toUpperCase();
+      const pick = this.choices.find((c) => c.phrase[0] === k);
+      if (!pick) {
+        this.missCount++;
+        return { status: 'miss', expected: '?', actual: k };
+      }
+      this.chosen = pick;
+      this.loadItem(pick.item);
+    }
     const targetChar = this.getCurrentChar();
     if (!targetChar) return { status: 'completed' };
 
@@ -144,6 +189,7 @@ export class PromptManager {
       const isFinished = this.charIndex >= this.currentText.length;
       if (isFinished) {
         const item = this.currentItem;
+        this.completedChoice = this.chosen;
         this.completed++;
         if (this.onSentenceComplete) this.onSentenceComplete(item);
         this.nextPrompt();
@@ -166,6 +212,10 @@ export class PromptManager {
   }
 
   nextPrompt() {
+    if (this.tactical) {
+      this.rollChoices();
+      return;
+    }
     if (this.queue.length) {
       this.queuePos = (this.queuePos + 1) % this.queue.length;
       this.loadItem(this.queue[this.queuePos]);

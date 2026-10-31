@@ -157,6 +157,7 @@ async function buildGallery() {
 // ------------------------------------------------------------------ menu
 const actions = {
   bot: () => startGame('bot'),
+  tactical: () => startGame('tactical'),
   online: () => startGame('online', invite ? { room: invite } : {}),
   how: () => openDialog('dlg-how'),
   store: () => {
