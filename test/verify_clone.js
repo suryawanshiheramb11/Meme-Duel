@@ -307,6 +307,10 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(distBytes < 40e6, `Hosted build is lean (${(distBytes / 1e6).toFixed(1)} MB, limit 40 MB)`);
   const cfg = JSON.parse(fs.readFileSync(path.join(dist, 'vercel.json'), 'utf8'));
   assert(cfg.headers && cfg.headers.some((h) => /assets/.test(h.source) && /max-age=\d{5,}/.test(JSON.stringify(h.headers))), 'Assets are served with long-lived cache headers');
+  const manifestRule = cfg.headers.find((h) => h.source === '/assets/memes/manifest.json');
+  const mediaRule = cfg.headers.find((h) => /^\/assets\//.test(h.source) && h.source !== '/assets/memes/manifest.json');
+  assert(manifestRule && /must-revalidate/.test(JSON.stringify(manifestRule.headers)), 'The meme manifest always revalidates, so edits reach returning players');
+  assert(mediaRule && !new RegExp(mediaRule.source.replace(/^\//, '^/')).test('/assets/memes/manifest.json') && new RegExp('^' + mediaRule.source + '$').test('/assets/memes/meme_001.mp4'), 'The long-cache rule covers media but not the manifest (no overlapping rules)');
   const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const preloaded = (indexHtml.match(/rel="modulepreload"/g) || []).length;
   const srcCount = (function walk(d) {
