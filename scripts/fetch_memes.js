@@ -118,6 +118,91 @@ const PHRASES = [
   [/purple canyon/, 'MEME DUEL BEGINS']
 ];
 
+// The special move each catchphrase unleashes, chosen by what the line MEANS so the move
+// matches the meme:
+//   beam     threats, big finishing lines            -> a huge energy blast
+//   slam     violence, accusations, "you're done"    -> launch them up and spike them down
+//   flurry   mockery, laughing, cheering, impatience -> ten rapid-fire strikes
+//   timeskip time cards, "later", "not today"        -> darkness, title card, delayed damage
+//   powerup  pity, courage, "full power", comebacks  -> next power form plus healing
+const MOVES = {
+  'ASAMBHAV ASAMBHAV': 'beam',
+  'MAUT KO CHHU KE': 'beam',
+  'TAPA TAP': 'beam',
+  'ABHI BATATA HU': 'beam',
+  'TERA TOH GAME BAJANA PADEGA': 'beam',
+  'TERI DADAGIRI NIKAL DUNGA': 'beam',
+  'DIMAG KHARAB HO JAYEGA': 'beam',
+  'AUKAT ME RAHO': 'beam',
+
+  'KHOPDI TOR SALAY KA': 'slam',
+  'TERA BAAP YAHAN CHHOD GAYA THA': 'slam',
+  'MUJHE MARO': 'slam',
+  'SAANP KO DEKHA': 'slam',
+  'AB DEKH TU AB TU GAYA BETA': 'slam',
+  'KON BHONK RAHA HAI': 'slam',
+  'JHOOTH BOL RAHA HAI': 'slam',
+  'CHAL JHOOTA': 'slam',
+  'CHEATING KARTA HAI TU': 'slam',
+  'JHOOT BOLO': 'slam',
+
+  'CLAP CLAP CLAP': 'flurry',
+  'LION LAUGHING': 'flurry',
+  'CHI CHI WOW NICE': 'flurry',
+  '50 RUPEE KAT OVERACTING KE': 'flurry',
+  'KESA LAGA MERA MAZAK': 'flurry',
+  'ARE YOU COMEDY ME': 'flurry',
+  'KYA BAAT KAR RAHA HAI': 'flurry',
+  'SHABASH BETA BAHUT BADHIYA': 'flurry',
+  'SHABASH SHABASH': 'flurry',
+  'HA MALUM HAI': 'flurry',
+  'HAAN YE KARLO PEHLE': 'flurry',
+  'TU SAMJHA NAHI': 'flurry',
+  'AREH KEHNA KYA CHAHTE HO': 'flurry',
+  'ARE BAND KAR': 'flurry',
+  'ABEY JALDI BOL': 'flurry',
+  'AB BOL NA': 'flurry',
+  'AAIYE DEKHTE HAI MAZA AAYEGA': 'flurry',
+  'ABHI MAZA AAYEGA NA BHIDU': 'flurry',
+  'KYA HAAL HAI': 'flurry',
+  'LEKIN YE KAR KYA RAHA HAI': 'flurry',
+  'AEE OHH': 'flurry',
+  'CHALO': 'flurry',
+
+  '2000 YEARS LATER': 'timeskip',
+  'A FEW MOMENTS LATER': 'timeskip',
+  'ONE ETERNITY LATER': 'timeskip',
+  'AAJ KE LIYE FILHAL ITNA HI': 'timeskip',
+  'AAJ MOOD NAHI HAI': 'timeskip',
+  'TENSION NAHI LENE KA': 'timeskip',
+  'HAMARE YAHA AISA HI HOTA HAI': 'timeskip',
+  'PARHAI LIKHAI KARO': 'timeskip',
+
+  'APNI SHAKTIYO KA ISTEMAAL KARO': 'powerup',
+  'AISE MAI BADA SAKHT LAUNDA HU': 'powerup',
+  'SAKHT LAUNDA PIGHAL GAYA': 'powerup',
+  'JIS RAH PE TUM CHAL RAHE HO': 'powerup',
+  'MEIN GAREEB HUN': 'powerup',
+  'MERE SATH ANYAY HUA HAI': 'powerup',
+  'DIL SE BURA LAGTA HAI': 'powerup',
+  'HEY BHAGWAN': 'powerup',
+  'ARE BABA': 'powerup',
+  'ARE DEVA YE GADBAD HAI': 'powerup',
+  'KUCH TO GADBAD HAI DAYA': 'powerup',
+  'I AM SORRY BABU': 'powerup',
+  'KAB HO GAYA YE': 'powerup',
+  'AREY MAI KYA KARU': 'powerup',
+  'ABBU AA RAHE HAI': 'powerup',
+  'LEKIN ONE SECOND': 'powerup',
+  'AYO COME LOOK AT THIS': 'powerup',
+  'KAISE KAISE LOG RAHTE HAI': 'powerup',
+  'BHAI BAHUT NEECH AADMI HAI TU': 'powerup',
+  'MAI NAHI BATAUNGA': 'powerup',
+  'BAS HAWA NIKAL GAYI': 'powerup',
+  'RAHA NAHI JATA': 'powerup',
+  'MEME DUEL BEGINS': 'powerup'
+};
+
 // The special move a finished phrase unleashes, picked from the meme's situation tags.
 function moveFor(tags, index) {
   if (tags.includes('beam')) return 'beam';
@@ -251,7 +336,7 @@ async function main() {
     const phrase = phraseFor(item.name);
     if (phrase) {
       clip.phrase = phrase;
-      clip.move = moveFor(tags, clips.length);
+      clip.move = MOVES[phrase] || moveFor(tags, clips.length);
       if (ffmpeg && makeThumb(file, path.join(thumbDir, thumbName), duration)) clip.thumb = `thumbs/${thumbName}`;
     }
     clips.push(clip);

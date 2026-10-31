@@ -90,6 +90,10 @@ export class MemeComboMenu {
                 <div><kbd>SPACE</kbd><span><b>Air launch.</b> Uppercut sends the enemy flying and the hero floats up beside them. Keep typing to juggle, and each hit keeps them airborne.</span></div>
                 <div><kbd>ENTER</kbd><span><b>Ground slam.</b> On an airborne enemy it dives them into the floor for heavy damage, a shockwave and a crater. On the ground it's a quick sweep.</span></div>
                 <div><kbd>TAB</kbd><span><b>Dash.</b> Far away: closes the gap. Close: dodges back (or crosses over if you're cornered). Hit Tab just as the enemy swings for a <b>perfect dodge</b>, slow motion and bonus style.</span></div>
+                <div><kbd>&larr; &rarr;</kbd><span><b>Walk</b> with the arrow keys. Every letter key is for typing.</span></div>
+                <div><kbd>&uarr;</kbd><span><b>Jump.</b> Clears the bot's low sweep, and the ultra shockwave if you time it.</span></div>
+                <div><kbd>&darr;</kbd><span><b>Guard</b> (hold). Blocks most damage, but you hit 40% softer. The ultra is unblockable.</span></div>
+                <div><kbd>Bot</kbd><span>Every attack is telegraphed. <b>HEAVY!</b> is slow and hurts, <b>JUMP!</b> is a low sweep, and a red ring with <b>DODGE!</b> is the ultra: Tab-dodge it, jump it, or hit the bot to interrupt it. Harder bots also block, read your air launcher, and counter your dashes.</span></div>
                 <div><kbd>Sentence</kbd><span>Finish a sentence to charge and fire the <b>beam finisher</b>.</span></div>
                 <div><kbd>CAPS / &#96;</kbd><span><b>Rage:</b> extra damage and at least Golden Rage form.</span></div>
                 <div><kbd>Typo</kbd><span>Drops your combo and invites an enemy counter-attack. Three in a row earns an apology meme.</span></div>
@@ -105,6 +109,12 @@ export class MemeComboMenu {
                   .map(([key, label]) => `<button class="form-btn meme-freq-btn" data-freq="${key}">${label}</button>`)
                   .join('')}
                 <button class="form-btn" id="meme-preview-btn">&#9654; Preview one</button>
+              </div>
+              <div class="form-row" id="meme-freeze-row">
+                <span class="tip-text" style="align-self:center">Stop the game during memes:</span>
+                ${[['all', 'Always'], ['big', 'Big moments'], ['off', 'Never']]
+                  .map(([key, label]) => `<button class="form-btn meme-freeze-btn" data-freeze="${key}">${label}</button>`)
+                  .join('')}
               </div>
               <div class="slider-row">
                 <span>Meme Volume:</span>
@@ -176,6 +186,7 @@ export class MemeComboMenu {
     this.diffBtns = this.menuRoot.querySelectorAll('.diff-btn');
     this.gfxBtns = this.menuRoot.querySelectorAll('.gfx-btn');
     this.memeFreqBtns = this.menuRoot.querySelectorAll('.meme-freq-btn');
+    this.memeFreezeBtns = this.menuRoot.querySelectorAll('.meme-freeze-btn');
   }
 
   bindEvents() {
@@ -242,6 +253,15 @@ export class MemeComboMenu {
           syncFreq();
         });
       });
+      const syncFreeze = () =>
+        this.memeFreezeBtns.forEach((b) => b.classList.toggle('active', b.dataset.freeze === this.memes.freezeMode));
+      syncFreeze();
+      this.memeFreezeBtns.forEach((btn) =>
+        btn.addEventListener('click', () => {
+          this.memes.setFreezeMode(btn.dataset.freeze);
+          syncFreeze();
+        })
+      );
       const memeVol = document.getElementById('vol-meme');
       memeVol.value = Math.round(this.memes.volume * 100);
       memeVol.addEventListener('input', (e) => this.memes.setVolume(e.target.value / 100));

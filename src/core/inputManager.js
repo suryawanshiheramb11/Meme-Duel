@@ -16,7 +16,8 @@ export class InputManager {
     // Held key state for continuous movement
     this.keysHeld = {
       left: false,
-      right: false
+      right: false,
+      down: false // guard
     };
 
     this.bindKeyboard();
@@ -34,6 +35,7 @@ export class InputManager {
     window.addEventListener('blur', () => {
       this.keysHeld.left = false;
       this.keysHeld.right = false;
+      this.keysHeld.down = false;
     });
   }
 
@@ -56,8 +58,14 @@ export class InputManager {
       this.keysHeld.right = true;
       return;
     }
-    if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
-      e.preventDefault(); // keep the page from scrolling
+    if (e.code === 'ArrowUp') {
+      e.preventDefault();
+      if (!e.repeat) this.combo.triggerJump(this.hero); // jump: clears low sweeps and ultra shockwaves
+      return;
+    }
+    if (e.code === 'ArrowDown') {
+      e.preventDefault();
+      this.keysHeld.down = true; // hold to guard
       return;
     }
 
@@ -122,11 +130,13 @@ export class InputManager {
   onKeyUp(e) {
     if (e.code === 'ArrowLeft') this.keysHeld.left = false;
     if (e.code === 'ArrowRight') this.keysHeld.right = false;
+    if (e.code === 'ArrowDown') this.keysHeld.down = false;
   }
 
   update(delta) {
     const hero = this.hero;
     if (!hero) return;
+    hero.guarding = this.keysHeld.down && hero.health > 0;
     if (this.keysHeld.left && !this.keysHeld.right) {
       this.combo.moveHero(hero, -1, delta);
     } else if (this.keysHeld.right && !this.keysHeld.left) {

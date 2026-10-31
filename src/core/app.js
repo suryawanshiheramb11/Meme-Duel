@@ -131,7 +131,7 @@ export class App {
       this.director.paused = false;
       this.combo.lastActionAt = performance.now();
     });
-    this.input.blockers.push(this.modeSelect);
+    this.input.blockers.push(this.modeSelect, this.memes); // a meme cutscene also swallows keys
 
     // Start background music on first user interaction (browsers block autoplay)
     const startAudioOnce = () => {
@@ -143,7 +143,7 @@ export class App {
       setTimeout(() => {
         if (!this.introShown) {
           this.introShown = true;
-          this.memes.trigger('intro', { priority: 2, side: 'right', force: true });
+          this.memes.trigger('intro', { priority: 2, side: 'right', force: true, noFreeze: true });
         }
       }, 500);
       window.removeEventListener('keydown', startAudioOnce);
@@ -161,6 +161,17 @@ export class App {
     const now = performance.now();
     const delta = Math.min((now - this.lastTime) / 1000, 0.05);
     this.lastTime = now;
+
+    // A meme cutscene stops the whole fight: nothing simulates, only the frozen frame is drawn
+    if (this.memes.frozen) {
+      this.wasFrozen = true;
+      this.arena.render();
+      return;
+    }
+    if (this.wasFrozen) {
+      this.wasFrozen = false;
+      this.combo.lastActionAt = now; // the pause shouldn't count as idling
+    }
 
     // Slow motion on KOs and perfect dodges; impact freeze on hits.
     let dt = delta;

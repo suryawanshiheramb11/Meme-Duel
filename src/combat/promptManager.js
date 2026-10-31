@@ -45,15 +45,25 @@ export class PromptManager {
     this.elapsedSeconds = 0;
   }
 
-  // items: [{ phrase, clip, move }]. Reorders so the same special move never repeats back to back.
+  // items: [{ phrase, clip, move }]. Sorted into a repeating "ladder" of moves so the fight keeps
+  // changing shape: flurry, slam, power surge, beam, time skip, then round again. Within each move
+  // the memes are shuffled. When a move runs out the ladder simply skips it.
   setQueue(items) {
-    const pool = [...items].sort(() => Math.random() - 0.5);
+    const LADDER = ['flurry', 'slam', 'powerup', 'beam', 'timeskip'];
+    const buckets = {};
+    [...items]
+      .sort(() => Math.random() - 0.5)
+      .forEach((it) => (buckets[LADDER.includes(it.move) ? it.move : 'other'] = buckets[LADDER.includes(it.move) ? it.move : 'other'] || []).push(it));
     const ordered = [];
-    while (pool.length) {
-      const prev = ordered[ordered.length - 1];
-      let i = pool.findIndex((it) => !prev || it.move !== prev.move);
-      if (i < 0) i = 0;
-      ordered.push(pool.splice(i, 1)[0]);
+    while (ordered.length < items.length) {
+      let took = false;
+      for (const mv of [...LADDER, 'other']) {
+        if (buckets[mv] && buckets[mv].length) {
+          ordered.push(buckets[mv].shift());
+          took = true;
+        }
+      }
+      if (!took) break;
     }
     this.queue = ordered;
     this.queuePos = 0;

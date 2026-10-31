@@ -2,7 +2,7 @@
 // Runs everything that happens *between* keystrokes: the enemy walking in and fighting back,
 // fighters facing each other, the hero hovering during air juggles, afterimage trails,
 // KO / respawn, and the camera focus point.
-import { DIFFICULTIES, DEFAULT_DIFFICULTY, randBetween, saveDifficulty } from './difficulty.js';
+import { ATTACKS, DIFFICULTIES, DEFAULT_DIFFICULTY, randBetween, pickWeighted, saveDifficulty } from './difficulty.js';
 
 const FIGHT_GAP = 1.05; // preferred distance between fighters
 const ENEMY_BOUND = 6.1;
@@ -22,7 +22,9 @@ export class FightDirector {
     this.heroDownTimer = 0;
     this.attackCooldown = 3;
     this.punishPending = false;
-    this.attack = null; // { t, struck, punish }
+    this.attack = null; // { type, spec, t, windup, struck, second, double, punish }
+    this.queuedAttack = null; // an attack the bot has decided on (e.g. a counter-poke)
+    this.ultraTimer = Infinity; // seconds until the next unblockable ultra
     this.entering = false;
     this.afterimageTimer = 0;
     this.dustTimer = 0;
@@ -37,6 +39,23 @@ export class FightDirector {
     combo.difficultyKey = this.diffKey;
 
     combo.onMiss = () => this.punish();
+    combo.onDashIn = () => this.counterPoke();
+    this.resetUltraTimer();
+  }
+
+  resetUltraTimer() {
+    this.ultraTimer = this.diff.ultra ? randBetween(this.diff.ultra.every) * 0.7 : Infinity;
+  }
+
+  // The bot decides to throw a specific attack right away (it read what you just did).
+  forceAttack(type) {
+    this.queuedAttack = type;
+    this.attackCooldown = Math.min(this.attackCooldown, 0.12);
+  }
+
+  // You dashed in from range: harder bots meet you with a quick poke.
+  counterPoke() {
+    if (Math.random() < this.diff.pokesDashIn && !this.attack && this.enemy.health > 0) this.forceAttack('jab');
   }
 
   // Switch the bot's level. The current enemy is rescaled in place, keeping its health fraction.
@@ -51,6 +70,8 @@ export class FightDirector {
     e.maxHealth = this.scaledEnemyHealth();
     e.health = e.health > 0 ? Math.max(1, Math.round(frac * e.maxHealth)) : 0;
     this.attackCooldown = Math.max(this.attackCooldown, 1.5);
+    this.attack = null;
+    this.resetUltraTimer();
     if (save) saveDifficulty(key);
   }
 
@@ -108,8 +129,14 @@ export class FightDirector {
       return;
     }
 
-    // Cancel a wind-up if the enemy gets clipped
-    if (this.attack && (e.pose === 'hurt' || e.isAirborne)) this.attack = null;
+    // Landing a hit on a winding-up bot interrupts the attack, which is the counter to its ultra
+    if (this.attack && (e.pose === 'hurt' || e.isAirborne)) {
+      if (this.attack.type === 'ultra') {
+        this.fx.floatText('INTERRUPTED!', e.x, e.y + 2.4, { color: '#7dff9a', size: 30, cls: 'fx-pop' });
+        this.combo.addStylePoints(30);
+      }
+      this.attack = null;
+    }
 
     const busy = e.isAirborne || e.pose === 'hurt' || e.pose === 'knockdown' || e.lockTimer > 0 || this.attack;
     e.walking = false;
@@ -127,71 +154,136 @@ export class FightDirector {
       if (this.entering && Math.abs(e.x - h.x) < 4.5) this.entering = false;
 
       this.attackCooldown -= dt;
-      const closeEnough = Math.abs(e.x - h.x) < 1.5;
-      if (this.attackCooldown <= 0 && closeEnough && !h.isAirborne && h.health > 0 && h.lockTimer <= 0 && !this.entering) {
-        this.attack = {
-          t: 0,
-          struck: false,
-          second: false,
-          double: Math.random() < this.diff.doubleStrike,
-          punish: this.punishPending
-        };
-        this.punishPending = false;
-        e.setPose('windup', this.diff.windup + 0.05, true);
-      }
+      if (!this.entering) this.ultraTimer -= dt;
+      const heroOpen = !h.isAirborne && h.health > 0 && h.lockTimer <= 0 && !this.entering;
+      const closeEnough = Math.abs(e.x - h.x) < (this.ultraTimer <= 0 ? 2.0 : 1.5);
+      if (this.attackCooldown <= 0 && closeEnough && heroOpen) this.startAttack();
     }
 
     if (this.attack) {
       const a = this.attack;
       a.t += dt;
-      const windup = this.diff.windup;
-      if (!a.struck && a.t >= windup) {
+      if (!a.struck && a.t >= a.windup) {
         a.struck = true;
-        e.setPose('punch', 0.28, true);
-        this.enemyStrike();
+        e.setPose(a.spec.pose, 0.3, true);
+        this.enemyStrike(a);
       }
-      // Harder bots follow up with a second swing
-      if (a.double && a.struck && !a.second && a.t >= windup + 0.3) {
+      // Harder bots follow a punch or jab with a second swing
+      if (a.double && a.struck && !a.second && a.t >= a.windup + 0.3) {
         a.second = true;
         e.setPose('kick', 0.25, true);
-        this.enemyStrike();
+        this.enemyStrike(a);
       }
-      if (a.t >= windup + (a.double ? 0.7 : 0.4)) {
+      if (a.t >= a.windup + (a.double ? 0.7 : 0.45)) {
         this.attack = null;
         const idleFor = (performance.now() - this.combo.lastActionAt) / 1000;
-        this.attackCooldown = randBetween(idleFor > 2 ? this.diff.idleCooldown : this.diff.cooldown);
+        let cooldown = randBetween(idleFor > 2 ? this.diff.idleCooldown : this.diff.cooldown);
+        // Smells blood: presses harder when you're low on health
+        if (this.diffKey === 'hard' && h.health < h.maxHealth * 0.35) cooldown *= 0.7;
+        this.attackCooldown = cooldown;
       }
     }
   }
 
-  enemyStrike() {
+  // Pick and telegraph the next attack. Every attack warns you: pose, text and (for the ultra) a red ring.
+  startAttack() {
+    const e = this.enemy;
+    let type;
+    if (this.queuedAttack) {
+      type = this.queuedAttack;
+      this.queuedAttack = null;
+    } else if (this.diff.ultra && this.ultraTimer <= 0) {
+      type = 'ultra';
+      this.ultraTimer = randBetween(this.diff.ultra.every);
+    } else {
+      type = pickWeighted(this.diff.attackWeights);
+    }
+    const spec = ATTACKS[type];
+    const windup = type === 'ultra' ? this.diff.ultra.windup : this.diff.windup * spec.windup;
+    this.attack = {
+      type,
+      spec,
+      t: 0,
+      windup,
+      struck: false,
+      second: false,
+      double: (type === 'punch' || type === 'jab') && Math.random() < this.diff.doubleStrike,
+      punish: this.punishPending
+    };
+    this.punishPending = false;
+    e.setPose(type === 'ultra' ? 'charge' : 'windup', windup + 0.05, true);
+
+    if (spec.tell) {
+      const ultra = type === 'ultra';
+      this.fx.floatText(spec.tell, e.x, e.y + 2.5, { color: ultra ? '#ff4455' : '#ffb02e', size: ultra ? 38 : 26, cls: 'fx-pop' });
+    }
+    if (type === 'ultra') {
+      this.fx.ringBurst(e.x, 1.1, 5.5, 0xff3040, windup);
+      this.fx.shockwave(e.x, 6, 0xff3040, windup);
+      this.fx.flash('#ff1020', 0.2, windup);
+      this.audio.playSound('whoosh_heavy');
+      this.arena.triggerScreenShake(0.3);
+    }
+  }
+
+  enemyStrike(a) {
     const h = this.hero;
     const e = this.enemy;
-    if (Math.abs(e.x - h.x) > 1.65 || h.health <= 0) return;
+    const spec = a.spec;
+    if (Math.abs(e.x - h.x) > spec.reach || h.health <= 0) return;
     const cx = (h.x + e.x) / 2;
+
+    // Jumping clears a low sweep and, if you time it, the ultra's shockwave
+    if ((spec.low && h.y > 0.45) || (a.type === 'ultra' && h.y > 0.8)) {
+      this.fx.floatText('JUMPED IT!', h.x, 2.7, { color: '#9be8ff', size: 28, cls: 'fx-pop' });
+      this.combo.addStylePoints(a.type === 'ultra' ? 40 : 20);
+      if (this.memes) this.memes.trigger('dodge', { priority: 2, side: 'left' });
+      return;
+    }
 
     if (h.invulnTimer > 0) {
       // Dodged: reward with style and a beat of slow motion.
       this.fx.floatText('PERFECT DODGE!', h.x, 2.7, { color: '#9be8ff', size: 30, cls: 'fx-pop' });
       if (this.memes) this.memes.trigger('dodge', { priority: 2, side: 'left' });
-      this.combo.addStylePoints(25);
-      this.combo.slowTimer = Math.max(this.combo.slowTimer, 0.35);
+      this.combo.addStylePoints(a.type === 'ultra' ? 60 : 25);
+      this.combo.slowTimer = Math.max(this.combo.slowTimer, a.type === 'ultra' ? 0.6 : 0.35);
       this.fx.afterimage(h, '#9be8ff');
       return;
     }
 
-    let dmg = this.diff.damage + Math.min(4, this.combo.kills * 0.6);
+    let dmg = this.diff.damage * spec.dmg + Math.min(4, this.combo.kills * 0.6);
+    let knock = spec.knock;
+    let stun = spec.stun;
+    const blocked = h.guarding && !spec.unblockable;
+    if (blocked) {
+      dmg *= spec.guard !== undefined ? spec.guard : 0.3;
+      knock = 0.06;
+      stun = 0;
+    }
     // Mercy (easy/medium): standing idle can wear you down but never finish you; only a typo counter can.
-    if (this.diff.mercy && !(this.attack && this.attack.punish)) dmg = Math.min(dmg, Math.max(0, h.health - 5));
-    const res = h.takeHit(dmg, { knock: 0.5, stun: 0.3 });
+    if (this.diff.mercy && !a.punish) dmg = Math.min(dmg, Math.max(0, h.health - 5));
+    const res = h.takeHit(dmg, { knock, stun, quiet: blocked, stagger: !blocked });
     if (!res.hit) return;
+
+    if (blocked) {
+      h.guardTimer = 0.3;
+      this.fx.floatText('BLOCKED', h.x, 2.6, { color: '#9be8ff', size: 24, cls: 'fx-pop' });
+      this.fx.hitSpark(cx, 1.2, { size: 0.8, color: 0x7dd3ff });
+      this.audio.playCombatHit('light');
+      this.arena.triggerScreenShake(0.12);
+      this.sinceHeroHurt = 0;
+      return;
+    }
+
     this.sinceHeroHurt = 0;
     this.combo.onHeroHit();
-    this.audio.playCombatHit('heavy');
-    this.arena.triggerScreenShake(0.3);
-    this.fx.hitSpark(cx, 1.15, { size: 1, color: 0xff6a6a });
-    this.fx.flash('#ff2020', 0.22, 0.25);
-    if (this.memes) this.memes.trigger('hurt', { priority: 1, chance: 0.5, side: 'left' });
+    const big = a.type === 'ultra' || a.type === 'heavy';
+    this.audio.playCombatHit(big ? 'crit' : 'heavy');
+    this.arena.triggerScreenShake(big ? 0.7 : 0.3);
+    this.fx.hitSpark(cx, 1.15, { size: big ? 1.7 : 1, color: 0xff6a6a, count: big ? 12 : 7 });
+    this.fx.flash('#ff2020', big ? 0.4 : 0.22, big ? 0.4 : 0.25);
+    if (a.type === 'ultra') this.fx.floatText('ULTRA!', e.x, e.y + 2.5, { color: '#ff4455', size: 40, cls: 'fx-pop fx-big' });
+    if (this.memes) this.memes.trigger('hurt', { priority: res.ko ? 3 : 1, chance: res.ko ? 1 : 0.5, side: 'left' });
     if (res.ko) this.heroDownTimer = 0;
   }
 
@@ -212,6 +304,7 @@ export class FightDirector {
     if (this.memes) this.memes.trigger(Math.random() < 0.5 ? 'timeskip' : 'enter', { priority: 2, chance: 0.85, side: 'right' });
     this.attackCooldown = 2.5;
     this.attack = null;
+    this.resetUltraTimer();
   }
 
   // ------------------------------------------------------------- hero

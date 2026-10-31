@@ -76,6 +76,8 @@ export class RetroHud {
         <span class="k-chip"><kbd>TAB</kbd> DASH</span>
         <span class="k-chip"><kbd>CAPS</kbd> / <kbd>\`</kbd> RAGE</span>
         <span class="k-chip"><kbd>&larr;</kbd><kbd>&rarr;</kbd> MOVE</span>
+        <span class="k-chip"><kbd>&uarr;</kbd> JUMP</span>
+        <span class="k-chip"><kbd>&darr;</kbd> GUARD</span>
       </div>
 
       <!-- Red Screen Flash on Miss / Error -->

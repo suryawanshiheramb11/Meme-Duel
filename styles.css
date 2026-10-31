@@ -1042,3 +1042,51 @@ html, body {
 #enemy-name[data-level="hard"] { color: #ff6a78; }
 .diff-btn.active[data-level="easy"] { border-color: #5dff9a; }
 .diff-btn.active[data-level="hard"] { border-color: #ff4a5a; }
+
+
+/* ==========================================================================
+   Meme cutscene: the game stops, the clip takes centre stage
+   ========================================================================== */
+#meme-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.82));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+body.meme-frozen #meme-dim { opacity: 1; pointer-events: auto; cursor: pointer; }
+
+#meme-tv.cutscene {
+  left: 50%;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform-origin: center;
+  transform: translate(-50%, -50%) scale(0.55);
+}
+#meme-tv.cutscene.show { transform: translate(-50%, -50%) scale(1); }
+#meme-tv.cutscene .meme-tv-frame { border-width: 7px; border-radius: 16px; }
+#meme-tv.cutscene #meme-video { height: min(58vh, 560px); width: auto; max-width: 90vw; max-height: none; min-width: 0; object-fit: contain; }
+#meme-tv.cutscene .meme-tv-badge { font-size: 22px; top: 12px; left: 12px; padding: 3px 12px; }
+
+.meme-tv-skip {
+  display: none;
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #dfe8f6;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+}
+#meme-tv.cutscene .meme-tv-skip { display: block; }
+
+/* Everything on the HUD holds still too while the fight is stopped */
+body.meme-frozen .fx-text,
+body.meme-frozen .red-cursor-box,
+body.meme-frozen #combo-counter-text,
+body.meme-frozen #rank-badge-letter { animation-play-state: paused; }

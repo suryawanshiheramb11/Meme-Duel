@@ -422,6 +422,23 @@ export function drawStickman(canvas, poseState, opts, makeCanvas, scratch) {
   if (opts.isHero && !style) drawCap(g);
   g.restore();
 
+  // guard shield: a glowing arc held out in front
+  if (opts.shield) {
+    g.save();
+    g.beginPath();
+    g.arc(pts.hip[0] + 4, pts.hip[1] - 92, 92, -0.95, 0.95);
+    g.closePath();
+    g.fillStyle = 'rgba(120, 200, 255, 0.16)';
+    g.fill();
+    g.lineWidth = 7;
+    g.strokeStyle = 'rgba(140, 215, 255, 0.95)';
+    g.lineCap = 'round';
+    g.beginPath();
+    g.arc(pts.hip[0] + 4, pts.hip[1] - 92, 92, -0.95, 0.95);
+    g.stroke();
+    g.restore();
+  }
+
   // 5. hit flash
   if (opts.flash > 0.01) {
     g.save();

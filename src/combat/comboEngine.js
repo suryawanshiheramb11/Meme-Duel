@@ -66,6 +66,7 @@ export class ComboEngine {
     this.hero = null;
     this.enemy = null;
     this.onMiss = null;
+    this.onDashIn = null; // called when the hero dashes in from range (the bot may counter-poke)
     this.memes = null; // meme reaction player, set by the app
     this.difficulty = null; // current bot level table, set by the fight director
     this.difficultyKey = 'medium';
@@ -90,7 +91,8 @@ export class ComboEngine {
   }
 
   damageMultiplier() {
-    return (this.isRageMode ? 1.6 : 1) * (FORM_DAMAGE[this.form] || 1);
+    // Holding guard trades offence for safety: you hit 40% softer
+    return (this.isRageMode ? 1.6 : 1) * (FORM_DAMAGE[this.form] || 1) * (this.hero && this.hero.guarding ? 0.6 : 1);
   }
 
   sparkColor() {
@@ -136,10 +138,25 @@ export class ComboEngine {
       enemy.slideTo(Math.max(-6, Math.min(6, enemy.x + away * 1.1)), 26);
       this.fx.afterimage(enemy, '#ff9a9a', 0.3);
       this.fx.floatText('TOO SLOW', enemy.x, enemy.y + 2.3, { color: '#ff9a9a', size: 26, cls: 'fx-pop' });
+      if (this.memes) this.memes.trigger('dodge', { priority: 2, chance: 0.5, side: 'right' });
       return;
     }
 
     const base = type === 'crit' ? 14 : type === 'heavy' ? 9 : 6;
+
+    // The bot throws up a guard against plain strikes (finishers break through). Smarter levels
+    // guard more the longer your combo runs, so a flawless string gets harder to keep going.
+    const lvl = this.difficulty;
+    if (lvl && lvl.guardChance > 0 && !finisher && !enemy.isAirborne) {
+      const bonus = lvl.adaptive ? Math.min(0.22, this.hits * 0.012) : 0;
+      if (Math.random() < lvl.guardChance + bonus) {
+        enemy.guardTimer = 0.35;
+        enemy.takeHit(base * 0.2 * this.damageMultiplier(), { knock: 0.03, quiet: true, stagger: false });
+        this.fx.hitSpark((hero.x + enemy.x) / 2 + hero.facing * 0.2, enemy.y + 1.2, { size: 0.8, color: 0x7dd3ff, count: 4 });
+        this.fx.floatText('BLOCKED', enemy.x, enemy.y + 2.3, { color: '#9be8ff', size: 22, cls: 'fx-pop' });
+        return;
+      }
+    }
     const knock = finisher ? 1.15 : type === 'heavy' ? 0.55 : 0.26;
     const result = enemy.takeHit(base * this.damageMultiplier() * (finisher ? 1.6 : 1), { knock });
 
@@ -221,6 +238,19 @@ export class ComboEngine {
     this.arena.triggerScreenShake(0.4);
     this.lastActionAt = performance.now();
     if (!hero || !enemy || enemy.health <= 0) return;
+
+    // Hard bots read the launcher coming and step out of it
+    const lvl = this.difficulty;
+    if (lvl && lvl.readsLauncher > 0 && !enemy.isAirborne && enemy.pose !== 'hurt' && Math.random() < lvl.readsLauncher) {
+      const away = Math.sign(enemy.x - hero.x) || 1;
+      enemy.slideTo(Math.max(-6, Math.min(6, enemy.x + away * 1.9)), 34);
+      this.fx.afterimage(enemy, '#ff9a9a', 0.3);
+      this.fx.floatText('READ YOU', enemy.x, enemy.y + 2.4, { color: '#ff9a9a', size: 28, cls: 'fx-pop' });
+      hero.setPose('launcher', 0.35, true);
+      hero.jump(6);
+      if (this.memes) this.memes.trigger('dodge', { priority: 2, side: 'right' });
+      return;
+    }
 
     const dist = Math.abs(enemy.x - hero.x);
     if (dist > 1.25) this.lunge(hero, enemy, 0.95);
@@ -305,7 +335,10 @@ export class ComboEngine {
     if (enemy && enemy.health > 0) {
       const toward = Math.sign(enemy.x - hero.x) || 1;
       const dist = Math.abs(enemy.x - hero.x);
-      if (dist > 2.1) dir = toward; // gap closer
+      if (dist > 2.1) {
+        dir = toward; // gap closer
+        if (this.onDashIn) this.onDashIn();
+      }
       else {
         dir = -toward; // evasive step back
         label = 'DODGE';
@@ -324,6 +357,14 @@ export class ComboEngine {
     this.fx.speedLines(hero.x, hero.y + 1.1, dir);
     this.fx.dust(hero.x, 6, dir);
     if (label) this.fx.floatText(label, hero.x, 2.6, { color: '#9be8ff', size: 26, cls: 'fx-pop' });
+  }
+
+  triggerJump(hero) {
+    if (!hero || hero.lockTimer > 0 || hero.health <= 0 || hero.isAirborne || hero.hover) return;
+    hero.jump(8.4);
+    this.audio.playSpecialKey('tab');
+    this.fx.dust(hero.x, 4);
+    this.lastActionAt = performance.now();
   }
 
   // Sentence finisher: charge a beam, fire it down the lane
@@ -397,7 +438,8 @@ export class ComboEngine {
     if (res.ko) this.onKO(enemy, hero);
   }
 
-  // Finishing the whole phrase plays that meme's clip and unleashes its special move.
+  // Finishing the whole phrase freezes the fight, plays that meme's clip as a cutscene, and only
+  // then unleashes the special move the meme was matched to.
   triggerSpecial(hero, enemy, item) {
     if (!hero) return;
     const move = (item && item.move) || 'beam';
@@ -406,19 +448,27 @@ export class ComboEngine {
       return;
     }
     this.specials++;
-    if (this.memes) {
-      if (item && item.clip) this.memes.playClip(item.clip, { side: 'right', priority: 3, caption: item.phrase });
-      else this.memes.trigger('hype', { priority: 2, side: 'right' });
-    }
-    this.fx.floatText(SPECIAL_LABELS[move] || 'SPECIAL', hero.x, 3.2, { color: '#ffd23a', size: 36, cls: 'fx-pop' });
-    this.score += 500;
 
-    switch (move) {
-      case 'slam': return this.specialMeteor(hero, enemy);
-      case 'flurry': return this.specialFlurry(hero, enemy);
-      case 'timeskip': return this.specialTimeSkip(hero, enemy, item);
-      case 'powerup': return this.specialPowerSurge(hero);
-      default: return this.triggerBeam(hero, enemy, { quiet: true });
+    const perform = () => {
+      if (hero.health <= 0) return;
+      this.fx.floatText(SPECIAL_LABELS[move] || 'SPECIAL', hero.x, 3.2, { color: '#ffd23a', size: 36, cls: 'fx-pop' });
+      this.score += 500;
+      switch (move) {
+        case 'slam': return this.specialMeteor(hero, enemy);
+        case 'flurry': return this.specialFlurry(hero, enemy);
+        case 'timeskip': return this.specialTimeSkip(hero, enemy, item);
+        case 'powerup': return this.specialPowerSurge(hero);
+        default: return this.triggerBeam(hero, enemy, { quiet: true });
+      }
+    };
+
+    if (this.memes && item && item.clip) {
+      // Freeze-frame on the final keystroke, play the meme, then the move fires
+      const played = this.memes.playClip(item.clip, { side: 'right', priority: 3, caption: item.phrase, onEnd: perform });
+      if (!played) perform(); // memes switched off: go straight to the move
+    } else {
+      if (this.memes) this.memes.trigger('hype', { priority: 2, side: 'right' });
+      perform();
     }
   }
 

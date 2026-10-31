@@ -73,6 +73,8 @@ export class PaperStandee {
     this.flash = 0;
     this.strikeAlt = 0;
     this.anchors = null;
+    this.guarding = false; // holding guard: blocks most damage, deals less
+    this.guardTimer = 0; // brief shield flash after a block
     this.quality = 2; // set by the performance monitor
     this.drawAccum = 0;
 
@@ -176,7 +178,7 @@ export class PaperStandee {
 
   // knock = distance (world units) the fighter slides back
   takeHit(damage = 10, opts = {}) {
-    const { launch = 0, knock = 0.3, stun = 0.26, quiet = false } = opts;
+    const { launch = 0, knock = 0.3, stun = 0.26, quiet = false, stagger = true } = opts;
     if (this.invulnTimer > 0) return { hit: false, ko: false };
     this.health = Math.max(0, this.health - damage);
     this.flash = quiet ? 0.4 : 1;
@@ -188,7 +190,7 @@ export class PaperStandee {
     }
     if (launch) {
       this.launchIntoAir(launch);
-    } else if (!this.isAirborne) {
+    } else if (!this.isAirborne && stagger) {
       this.setPose('hurt', stun, true);
     }
     return { hit: true, ko: false };
@@ -222,6 +224,7 @@ export class PaperStandee {
     this.time += delta;
     if (this.lockTimer > 0) this.lockTimer -= delta;
     if (this.invulnTimer > 0) this.invulnTimer -= delta;
+    if (this.guardTimer > 0) this.guardTimer -= delta;
     this.flash = Math.max(0, this.flash - delta * 5);
 
     // Scripted glide (lunge / dash), then knockback slide with friction
@@ -315,7 +318,7 @@ export class PaperStandee {
     // A fighter in the middle of a strike, hit, flash or jump redraws every frame. A calm one
     // (guard / walking) can skip frames on slower devices; the skipped time is applied next draw.
     this.drawAccum += delta;
-    const busy = this.pose !== 'guard' || this.flash > 0.01 || this.isAirborne || this.slideTarget !== null;
+    const busy = this.pose !== 'guard' || this.flash > 0.01 || this.isAirborne || this.slideTarget !== null || this.guardTimer > 0;
     if (!busy && this.drawAccum < IDLE_REDRAW[this.quality]) return;
     const dt = this.drawAccum;
     this.drawAccum = 0;
@@ -342,6 +345,7 @@ export class PaperStandee {
         time: this.time,
         flash: this.flash,
         bigHair: this.bigHair,
+        shield: this.guarding || this.guardTimer > 0,
         glow: this.quality >= 1
       },
       makeCanvas,

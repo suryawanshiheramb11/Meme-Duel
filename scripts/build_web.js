@@ -59,6 +59,12 @@ const config = {
   cleanUrls: true,
   headers: [
     {
+      // The clip list changes whenever memes, phrases or moves are edited, so it must always revalidate.
+      // (The first matching rule wins for a header, so this must stay above the general /assets rule.)
+      source: '/assets/memes/manifest.json',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' }]
+    },
+    {
       source: '/assets/(.*)',
       headers: [{ key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=86400' }]
     },

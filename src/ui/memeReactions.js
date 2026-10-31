@@ -13,6 +13,9 @@ const FREQUENCY = {
 };
 const STORAGE_KEY = 'memeDuel.memes';
 
+// How long a reaction (not a typed phrase's own meme) may hold the game frozen
+const REACTION_FREEZE_SECONDS = 3.5;
+
 // Caption stamped on the popup so the joke lands even before the clip's audio does
 const CAPTIONS = {
   ko: ['SKILL ISSUE', 'GG EZ', 'NOT EVEN CLOSE', 'SEE YOU NEVER'],
@@ -48,6 +51,10 @@ export class MemeReactions {
     this.audio = audioSystem;
     const saved = loadSettings();
     this.frequency = FREQUENCY[saved.frequency] ? saved.frequency : 'normal';
+    // 'all': every meme is a cutscene that stops the game. 'big': only phrase memes and big
+    // moments. 'off': memes are just a corner popup and the fight carries on.
+    this.freezeMode = ['all', 'big', 'off'].includes(saved.freeze) ? saved.freeze : 'all';
+    this.frozen = false;
     this.volume = typeof saved.volume === 'number' ? saved.volume : 0.8;
 
     this.clips = [];
@@ -74,8 +81,28 @@ export class MemeReactions {
         <video id="meme-video" playsinline preload="auto"></video>
         <div class="meme-tv-scan"></div>
         <span class="meme-tv-badge">MEME</span>
+        <span class="meme-tv-skip">SPACE or click to skip</span>
       </div>`;
     container.appendChild(this.root);
+
+    // Dims the frozen fight behind a cutscene; clicking it skips
+    this.dim = document.createElement('div');
+    this.dim.id = 'meme-dim';
+    this.dim.addEventListener('click', () => this.skip());
+    container.appendChild(this.dim);
+
+    // Capture phase so skipping never leaks a keystroke into the typing game or the menu
+    window.addEventListener(
+      'keydown',
+      (e) => {
+        if (this.frozen && ['Space', 'Enter', 'Escape'].includes(e.code)) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.skip();
+        }
+      },
+      true
+    );
     this.video = this.root.querySelector('video');
     this.badge = this.root.querySelector('.meme-tv-badge');
     this.video.addEventListener('ended', () => this.finish());
@@ -106,6 +133,28 @@ export class MemeReactions {
     return this.clips.length > 0;
   }
 
+  // Lets the input manager treat a running cutscene like an open menu (keys are ignored)
+  get isOpen() {
+    return this.frozen;
+  }
+
+  skip() {
+    if (this.frozen) this.finish();
+  }
+
+  setFreezeMode(mode) {
+    if (!['all', 'big', 'off'].includes(mode)) return;
+    this.freezeMode = mode;
+    this.save();
+  }
+
+  // Should a reaction of this kind stop the game?
+  wantsFreeze(tag, priority) {
+    if (this.freezeMode === 'off') return false;
+    if (this.freezeMode === 'big') return priority >= 3;
+    return tag !== 'idle'; // nothing is happening while idle, so a freeze would add nothing
+  }
+
   setFrequency(level) {
     if (!FREQUENCY[level]) return;
     this.frequency = level;
@@ -121,7 +170,10 @@ export class MemeReactions {
 
   save() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ frequency: this.frequency, volume: this.volume }));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ frequency: this.frequency, volume: this.volume, freeze: this.freezeMode })
+      );
     } catch (e) {
       /* private mode: settings just don't persist */
     }
@@ -134,8 +186,9 @@ export class MemeReactions {
    * chance   0-1 probability this trigger fires at all (scaled by the frequency setting)
    * side     'left' for things happening to the hero, 'right' for the enemy
    * force    skip chance and cooldown (previews, intro)
+   * noFreeze keep it a corner popup even when memes normally stop the game
    */
-  trigger(tag, { priority = 1, chance = 1, side = 'right', force = false } = {}) {
+  trigger(tag, { priority = 1, chance = 1, side = 'right', force = false, noFreeze = false } = {}) {
     if (!this.ready || (this.frequency === 'off' && !force)) return false;
     const now = performance.now();
     const freq = FREQUENCY[this.frequency];
@@ -164,7 +217,13 @@ export class MemeReactions {
 
     const clip = this.pick(tag);
     if (!clip) return false;
-    this.play(clip, { priority, side, tag });
+    this.play(clip, {
+      priority,
+      side,
+      tag,
+      cutscene: !noFreeze && this.wantsFreeze(tag, priority),
+      maxSeconds: REACTION_FREEZE_SECONDS
+    });
     return true;
   }
 
@@ -191,11 +250,12 @@ export class MemeReactions {
   }
 
   // Play one specific clip (the meme whose catchphrase was just typed), captioned with it.
-  playClip(clip, { side = 'right', priority = 3, caption } = {}) {
+  // onEnd runs when the clip finishes, is skipped or is replaced (a special move waits on it).
+  playClip(clip, { side = 'right', priority = 3, caption, onEnd } = {}) {
     if (!this.ready || this.frequency === 'off') return false;
     this.recent.push(clip.file);
     if (this.recent.length > RECENT_MEMORY) this.recent.shift();
-    this.play(clip, { priority, side, tag: 'misc', caption });
+    this.play(clip, { priority, side, tag: 'misc', caption, cutscene: this.freezeMode !== 'off', onEnd });
     return true;
   }
 
@@ -215,7 +275,7 @@ export class MemeReactions {
     return clip;
   }
 
-  play(clip, { priority, side, tag = 'misc', caption }) {
+  play(clip, { priority, side, tag = 'misc', caption, cutscene = false, maxSeconds = 6, onEnd = null }) {
     if (this.current) this.hide(true);
     const v = this.video;
     v.muted = false;
@@ -225,12 +285,15 @@ export class MemeReactions {
 
     const captions = CAPTIONS[tag] || CAPTIONS.misc;
     this.badge.textContent = caption || captions[Math.floor(Math.random() * captions.length)];
-    this.root.className = `show side-${side} prio-${priority}`;
+    this.root.className = `show side-${side} prio-${priority}${cutscene ? ' cutscene' : ''}`;
+    this.frozen = cutscene;
+    document.body.classList.toggle('meme-frozen', cutscene);
     // retrigger the pop-in animation when swapping clips
     void this.root.offsetWidth;
 
-    const limit = ((clip.duration || 5) + 0.6) * 1000;
-    this.current = { priority, startedAt: performance.now(), timer: setTimeout(() => this.finish(), limit) };
+    const length = Math.min(clip.duration || 5, cutscene ? maxSeconds : 6);
+    const limit = (length + 0.6) * 1000;
+    this.current = { priority, onEnd, startedAt: performance.now(), timer: setTimeout(() => this.finish(), limit) };
     this.stats.played++;
     this.duckMusic(true);
 
@@ -254,13 +317,18 @@ export class MemeReactions {
   }
 
   hide(immediate) {
-    if (this.current) clearTimeout(this.current.timer);
+    const done = this.current;
+    if (done) clearTimeout(done.timer);
     this.current = null;
     this.lastEnd = performance.now();
-    this.root.classList.remove('show');
+    this.frozen = false;
+    document.body.classList.remove('meme-frozen');
+    this.root.classList.remove('show', 'cutscene');
     this.video.pause();
     if (immediate) this.video.removeAttribute('src');
     this.duckMusic(false);
+    // Whatever was waiting on this clip (a special move) goes now
+    if (done && done.onEnd) done.onEnd();
   }
 
   // Dip the background music while a clip speaks so the audio stays intelligible.

@@ -61,7 +61,7 @@
         "enter"
       ],
       "phrase": "AAIYE DEKHTE HAI MAZA AAYEGA",
-      "move": "powerup",
+      "move": "flurry",
       "thumb": "thumbs/meme_006.jpg"
     },
     {
@@ -117,7 +117,7 @@
         "idle"
       ],
       "phrase": "AB BOL NA",
-      "move": "slam",
+      "move": "flurry",
       "thumb": "thumbs/meme_011.jpg"
     },
     {
@@ -130,7 +130,7 @@
         "ko"
       ],
       "phrase": "AB DEKH TU AB TU GAYA BETA",
-      "move": "powerup",
+      "move": "slam",
       "thumb": "thumbs/meme_012.jpg"
     },
     {
@@ -141,7 +141,7 @@
         "enter"
       ],
       "phrase": "ABBU AA RAHE HAI",
-      "move": "flurry",
+      "move": "powerup",
       "thumb": "thumbs/meme_013.jpg"
     },
     {
@@ -161,7 +161,7 @@
         "dodge"
       ],
       "phrase": "ABEY JALDI BOL",
-      "move": "powerup",
+      "move": "flurry",
       "thumb": "thumbs/meme_015.jpg"
     },
     {
@@ -181,7 +181,7 @@
         "enter"
       ],
       "phrase": "ABHI MAZA AAYEGA NA BHIDU",
-      "move": "slam",
+      "move": "flurry",
       "thumb": "thumbs/meme_017.jpg"
     },
     {
@@ -246,7 +246,7 @@
         "hurt"
       ],
       "phrase": "ARE BABA",
-      "move": "slam",
+      "move": "powerup",
       "thumb": "thumbs/meme_023.jpg"
     },
     {
@@ -280,7 +280,7 @@
         "enter"
       ],
       "phrase": "ARE BAND KAR",
-      "move": "slam",
+      "move": "flurry",
       "thumb": "thumbs/meme_026.jpg"
     },
     {
@@ -302,7 +302,7 @@
         "hurt"
       ],
       "phrase": "AREY MAI KYA KARU",
-      "move": "flurry",
+      "move": "powerup",
       "thumb": "thumbs/meme_028.jpg"
     },
     {
@@ -336,7 +336,7 @@
         "rage"
       ],
       "phrase": "AUKAT ME RAHO",
-      "move": "slam",
+      "move": "beam",
       "thumb": "thumbs/meme_031.jpg"
     },
     {
@@ -348,7 +348,7 @@
         "launch"
       ],
       "phrase": "AYO COME LOOK AT THIS",
-      "move": "slam",
+      "move": "powerup",
       "thumb": "thumbs/meme_032.jpg"
     },
     {
@@ -396,7 +396,7 @@
         "typo"
       ],
       "phrase": "BHAI BAHUT NEECH AADMI HAI TU",
-      "move": "flurry",
+      "move": "powerup",
       "thumb": "thumbs/meme_037.jpg"
     },
     {
@@ -415,7 +415,7 @@
         "dodge"
       ],
       "phrase": "CHAL JHOOTA",
-      "move": "powerup",
+      "move": "slam",
       "thumb": "thumbs/meme_039.jpg"
     },
     {
@@ -470,7 +470,7 @@
         "hurt"
       ],
       "phrase": "KUCH TO GADBAD HAI DAYA",
-      "move": "slam",
+      "move": "powerup",
       "thumb": "thumbs/meme_044.jpg"
     },
     {
@@ -494,7 +494,7 @@
         "hurt"
       ],
       "phrase": "DIL SE BURA LAGTA HAI",
-      "move": "flurry",
+      "move": "powerup",
       "thumb": "thumbs/meme_046.jpg"
     },
     {
@@ -506,7 +506,7 @@
         "rage"
       ],
       "phrase": "DIMAG KHARAB HO JAYEGA",
-      "move": "slam",
+      "move": "beam",
       "thumb": "thumbs/meme_047.jpg"
     },
     {
@@ -537,7 +537,7 @@
         "typo"
       ],
       "phrase": "HAAN YE KARLO PEHLE",
-      "move": "slam",
+      "move": "flurry",
       "thumb": "thumbs/meme_050.jpg"
     },
     {
@@ -548,7 +548,7 @@
         "enter"
       ],
       "phrase": "HAMARE YAHA AISA HI HOTA HAI",
-      "move": "powerup",
+      "move": "timeskip",
       "thumb": "thumbs/meme_051.jpg"
     },
     {
@@ -559,7 +559,7 @@
         "hurt"
       ],
       "phrase": "HEY BHAGWAN",
-      "move": "flurry",
+      "move": "powerup",
       "thumb": "thumbs/meme_052.jpg"
     },
     {
@@ -590,7 +590,7 @@
         "typo"
       ],
       "phrase": "I AM SORRY BABU",
-      "move": "flurry",
+      "move": "powerup",
       "thumb": "thumbs/meme_055.jpg"
     },
     {
@@ -609,7 +609,7 @@
         "dodge"
       ],
       "phrase": "JHOOT BOLO",
-      "move": "powerup",
+      "move": "slam",
       "thumb": "thumbs/meme_057.jpg"
     },
     {
@@ -620,7 +620,7 @@
         "dodge"
       ],
       "phrase": "JHOOTH BOL RAHA HAI",
-      "move": "flurry",
+      "move": "slam",
       "thumb": "thumbs/meme_058.jpg"
     },
     {
@@ -633,7 +633,7 @@
         "launch"
       ],
       "phrase": "KAB HO GAYA YE",
-      "move": "slam",
+      "move": "powerup",
       "thumb": "thumbs/meme_059.jpg"
     },
     {
@@ -680,7 +680,7 @@
         "enter"
       ],
       "phrase": "KON BHONK RAHA HAI",
-      "move": "powerup",
+      "move": "slam",
       "thumb": "thumbs/meme_063.jpg"
     },
     {
@@ -691,7 +691,7 @@
         "hurt"
       ],
       "phrase": "KUCH TO GADBAD HAI DAYA",
-      "move": "flurry",
+      "move": "powerup",
       "thumb": "thumbs/meme_064.jpg"
     },
     {
@@ -714,7 +714,7 @@
         "enter"
       ],
       "phrase": "KYA HAAL HAI",
-      "move": "powerup",
+      "move": "flurry",
       "thumb": "thumbs/meme_066.jpg"
     },
     {
@@ -738,7 +738,7 @@
         "ko"
       ],
       "phrase": "LEKIN YE KAR KYA RAHA HAI",
-      "move": "beam",
+      "move": "flurry",
       "thumb": "thumbs/meme_068.jpg"
     },
     {
@@ -804,7 +804,7 @@
         "hurt"
       ],
       "phrase": "MEIN GAREEB HUN",
-      "move": "slam",
+      "move": "powerup",
       "thumb": "thumbs/meme_074.jpg"
     },
     {
@@ -851,7 +851,7 @@
         "typo"
       ],
       "phrase": "PARHAI LIKHAI KARO",
-      "move": "powerup",
+      "move": "timeskip",
       "thumb": "thumbs/meme_078.jpg"
     },
     {
@@ -862,7 +862,7 @@
         "intro"
       ],
       "phrase": "MEME DUEL BEGINS",
-      "move": "flurry",
+      "move": "powerup",
       "thumb": "thumbs/meme_079.jpg"
     },
     {
@@ -873,7 +873,7 @@
         "hurt"
       ],
       "phrase": "RAHA NAHI JATA",
-      "move": "slam",
+      "move": "powerup",
       "thumb": "thumbs/meme_080.jpg"
     },
     {
@@ -899,7 +899,7 @@
         "rage"
       ],
       "phrase": "SAANP KO DEKHA",
-      "move": "beam",
+      "move": "slam",
       "thumb": "thumbs/meme_082.jpg"
     },
     {
@@ -1009,7 +1009,7 @@
         "typo"
       ],
       "phrase": "TU SAMJHA NAHI",
-      "move": "slam",
+      "move": "flurry",
       "thumb": "thumbs/meme_092.jpg"
     }
   ]

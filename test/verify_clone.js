@@ -24,7 +24,7 @@ console.log('KEYBOARD WARRIOR STICKMAN: 1:1 CLONE VERIFICATION');
 console.log('====================================================\n');
 
 // 1. Core Architecture & Modules
-console.log('[1/9] Verifying 1:1 Engine Architecture & Source Modules...');
+console.log('[1/10] Verifying 1:1 Engine Architecture & Source Modules...');
 const requiredFiles = [
   'index.html',
   'styles.css',
@@ -53,7 +53,7 @@ for (const rel of requiredFiles) {
 }
 
 // 2. Generated arena backdrops & paper texture
-console.log('\n[2/9] Verifying Generated Arena Backdrops...');
+console.log('\n[2/10] Verifying Generated Arena Backdrops...');
 const arenaFiles = ['desk', 'crt', 'meadow', 'sketchpad', 'dojo', 'cyber', 'wasteland', 'space', 'lava'];
 for (const name of arenaFiles) {
   const rel = `assets/arenas/${name}.jpg`;
@@ -63,7 +63,7 @@ for (const name of arenaFiles) {
 assert(fs.existsSync(path.join(ROOT, 'assets/textures/paper/notebook_paper.png')), 'Notebook paper texture present');
 
 // 3. Audio Engine & SFX Assets
-console.log('\n[3/9] Verifying Mechanical Audio & Combat SFX...');
+console.log('\n[3/10] Verifying Mechanical Audio & Combat SFX...');
 const audioFiles = [
   'assets/audio/sfx/keys/thock_01.ogg',
   'assets/audio/sfx/keys/thock_02.ogg',
@@ -84,7 +84,7 @@ for (const audio of audioFiles) {
 }
 
 // 4. Prompt Engine Logic Simulation
-console.log('\n[4/9] Testing Prompt Engine Mechanics (Typing, Red Cursor, Accuracy)...');
+console.log('\n[4/10] Testing Prompt Engine Mechanics (Typing, Red Cursor, Accuracy)...');
 // Import PromptManager logic simulation
 class MockPromptManager {
   constructor() {
@@ -127,7 +127,7 @@ assert(promptTester.goodCount === 1 && promptTester.missCount === 1, 'Metrics: 1
 assert(promptTester.getAccuracy() === 50, 'Accuracy correctly calculated as 50%');
 
 // 5. Combat & DMC Style Rank Engine Simulation
-console.log('\n[5/9] Testing Combat Engine (DMC Ranks, Air Launcher, Slam, Rage)...');
+console.log('\n[5/10] Testing Combat Engine (DMC Ranks, Air Launcher, Slam, Rage)...');
 class MockComboEngine {
   constructor() {
     this.hits = 0;
@@ -165,7 +165,7 @@ comboTester.triggerRageMode();
 assert(comboTester.isRageMode === true, 'Caps Lock Rage Mode active');
 
 // 6. Regression tests for the reported bugs: A/D keys, alignment, arena wiring
-console.log('\n[6/9] Regression: typing keys, fighter alignment, arena wiring...');
+console.log('\n[6/10] Regression: typing keys, fighter alignment, arena wiring...');
 
 // 6a. Every letter must reach the typing prompt. WASD movement used to swallow A and D.
 const inputSrc = fs.readFileSync(path.join(ROOT, 'src/core/inputManager.js'), 'utf8');
@@ -214,7 +214,7 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   }
 
   // 7. Meme clips, meme queue and special moves
-  console.log('\n[7/9] Meme clips, queue phrases and special moves...');
+  console.log('\n[7/10] Meme clips, queue phrases and special moves...');
   const memeDir = path.join(ROOT, 'assets/memes');
   const manifestPath = path.join(memeDir, 'manifest.json');
   assert(fs.existsSync(manifestPath), 'Meme manifest exists (run `npm run fetch:memes` if missing)');
@@ -271,7 +271,7 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   console.log('');
 
   // 8. Difficulty levels
-  console.log('\n[8/9] Easy / Medium / Hard bot levels...');
+  console.log('\n[8/10] Easy / Medium / Hard bot levels...');
   const diffSrc = fs.readFileSync(path.join(ROOT, 'src/combat/difficulty.js'), 'utf8').replace(/^export /gm, '');
   const { DIFFICULTIES } = new Function(`${diffSrc}\nreturn { DIFFICULTIES };`)();
   const lv = ['easy', 'medium', 'hard'].map((k) => DIFFICULTIES[k]);
@@ -292,7 +292,7 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(fs.existsSync(path.join(ROOT, 'src/ui/modeSelect.js')), 'Start-screen mode picker exists');
 
   // 9. Hosted build
-  console.log('\n[9/9] Slim hosted build (web-dist)...');
+  console.log('\n[9/10] Slim hosted build (web-dist)...');
   require('child_process').execFileSync('node', [path.join(ROOT, 'scripts/build_web.js')], { stdio: 'pipe' });
   const dist = path.join(ROOT, 'web-dist');
   const distFiles = (function walk(d) {
@@ -314,6 +314,54 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   })(path.join(ROOT, 'src')).length;
   assert(preloaded >= srcCount + 2, `Every game module is preloaded in parallel (${preloaded} modulepreload links for ${srcCount} modules + three.js)`);
   assert(!/@import/.test(fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8')), 'No render-blocking @import in the stylesheet');
+
+  console.log('');
+
+  // 10. Smarter bot, guard/jump controls, meme cutscenes and move matching
+  console.log('\n[10/10] Bot moveset, controls, cutscene freeze, meme-to-move matching...');
+  const diffSrc2 = fs.readFileSync(path.join(ROOT, 'src/combat/difficulty.js'), 'utf8').replace(/^export /gm, '');
+  const { ATTACKS, DIFFICULTIES: D2 } = new Function(`${diffSrc2}\nreturn { ATTACKS, DIFFICULTIES };`)();
+  assert(ATTACKS.jab.windup < ATTACKS.punch.windup && ATTACKS.punch.windup < ATTACKS.heavy.windup, 'Attack telegraphs run jab < punch < heavy');
+  assert(ATTACKS.jab.dmg < ATTACKS.punch.dmg && ATTACKS.punch.dmg < ATTACKS.heavy.dmg && ATTACKS.heavy.dmg < ATTACKS.ultra.dmg, 'Attack damage runs jab < punch < heavy < ultra');
+  assert(ATTACKS.ultra.unblockable && ATTACKS.sweep.low, 'Ultra is unblockable and the sweep is a low attack you can jump');
+  assert(Object.keys(ATTACKS).every((k) => ATTACKS[k].reach > 0 && ATTACKS[k].pose), 'Every attack has a reach and a pose');
+  const lv2 = ['easy', 'medium', 'hard'].map((k) => D2[k]);
+  assert(!lv2[0].ultra && lv2[1].ultra && lv2[2].ultra, 'Easy has no ultra; medium and hard do');
+  assert(lv2[2].ultra.every[1] < lv2[1].ultra.every[0] && lv2[2].ultra.windup < lv2[1].ultra.windup, 'Hard throws ultras more often with less warning than medium');
+  assert(lv2[0].guardChance < lv2[1].guardChance && lv2[1].guardChance < lv2[2].guardChance, 'Bot blocks more as difficulty rises');
+  assert(lv2[0].readsLauncher < lv2[1].readsLauncher && lv2[1].readsLauncher < lv2[2].readsLauncher, 'Bot reads your air launcher more as difficulty rises');
+  assert(lv2[0].pokesDashIn < lv2[1].pokesDashIn && lv2[1].pokesDashIn < lv2[2].pokesDashIn, 'Bot counter-pokes your dash more as difficulty rises');
+  assert(Object.keys(lv2[0].attackWeights).length === 1 && Object.keys(lv2[2].attackWeights).length >= 4, 'Easy throws one attack; hard throws a full moveset');
+  assert(Object.keys(lv2[2].attackWeights).every((k) => ATTACKS[k]), 'Every weighted attack exists in the attack table');
+
+  const inSrc = fs.readFileSync(path.join(ROOT, 'src/core/inputManager.js'), 'utf8');
+  assert(/code === 'ArrowUp'[\s\S]*triggerJump/.test(inSrc), 'Up arrow jumps');
+  assert(/code === 'ArrowDown'[\s\S]*keysHeld\.down = true/.test(inSrc) && /hero\.guarding\s*=/.test(inSrc), 'Down arrow holds guard');
+  const dirSrc2 = fs.readFileSync(path.join(ROOT, 'src/combat/fightDirector.js'), 'utf8');
+  assert(/h\.guarding && !spec\.unblockable/.test(dirSrc2) && /spec\.low && h\.y > 0\.45/.test(dirSrc2), 'Guard blocks (except the ultra) and jumping clears low attacks');
+  assert(/INTERRUPTED/.test(dirSrc2), 'Hitting the bot mid-windup interrupts its ultra');
+
+  const memeSrc = fs.readFileSync(path.join(ROOT, 'src/ui/memeReactions.js'), 'utf8');
+  const appSrc = fs.readFileSync(path.join(ROOT, 'src/core/app.js'), 'utf8');
+  assert(/get isOpen\(\)/.test(memeSrc) && /skip\(\)/.test(memeSrc) && /onEnd/.test(memeSrc), 'Meme player can freeze, be skipped, and run a callback when done');
+  assert(/this\.memes\.frozen/.test(appSrc) && /return;/.test(appSrc.slice(appSrc.indexOf('this.memes.frozen'))), 'Game loop stops simulating while a meme cutscene plays');
+  assert(/blockers\.push\([^)]*this\.memes/.test(appSrc), 'Keyboard is ignored during a meme cutscene');
+  assert(/onEnd: perform/.test(comboSrc2), 'A phrase\'s special move waits for its meme cutscene to finish');
+  assert(/noFreeze: true/.test(appSrc), 'The startup intro does not freeze the game');
+
+  // Every typeable meme has an explicit, meaning-based move, and the queue is a sorted ladder.
+  const fetchSrc = fs.readFileSync(path.join(ROOT, 'scripts/fetch_memes.js'), 'utf8');
+  const movesBlock = fetchSrc.slice(fetchSrc.indexOf('const MOVES = {'), fetchSrc.indexOf('};', fetchSrc.indexOf('const MOVES = {')));
+  const explicit = [...movesBlock.matchAll(/'([^']+)':\s*'(beam|slam|flurry|timeskip|powerup)'/g)];
+  const manifest2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/memes/manifest.json'), 'utf8')).clips.filter((c) => c.phrase);
+  const explicitMap = Object.fromEntries(explicit.map((m) => [m[1], m[2]]));
+  assert(manifest2.every((c) => explicitMap[c.phrase] === c.move), `All ${manifest2.length} phrases use their hand-picked move`);
+  const ladderPM = new Function(`${promptSrc.replace(/^export /gm, '')}\nreturn PromptManager;`)();
+  const lp = new ladderPM(() => {}, () => {});
+  const sample = ['flurry', 'slam', 'powerup', 'beam', 'timeskip'].flatMap((m) => [1, 2, 3].map((i) => ({ phrase: `${m} ${i}`.toUpperCase(), move: m, clip: {} })));
+  lp.setQueue(sample);
+  assert(lp.queue.slice(0, 5).map((q) => q.move).join() === 'flurry,slam,powerup,beam,timeskip', 'Queue is sorted as a ladder: flurry, slam, power surge, beam, time skip');
+  assert(lp.queue.slice(5, 10).map((q) => q.move).join() === 'flurry,slam,powerup,beam,timeskip', 'The ladder repeats for the next round');
 
   console.log('');
 
