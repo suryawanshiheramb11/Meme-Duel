@@ -328,3 +328,18 @@ kbd.key {
 .st-btn.no { opacity: 0.4; cursor: not-allowed; }
 @media (max-width: 760px) { .st-body { grid-template-columns: 1fr; } .st-frame { margin: 0 auto; } }
 @media (min-width: 921px) and (max-height: 860px) { .ld-tag { margin: 10px 0 12px; } .ld-foot { display: none; } .ld-menu { gap: 7px; } .menu-btn .mb-label { font-size: 24px; } }
+
+/* Ruled notebook paper that scrolls with the text, so every line of writing sits on a rule */
+.ld-dialog .ld-body {
+  background: repeating-linear-gradient(transparent 0 31px, var(--rule) 31px 32px), var(--paper);
+  background-attachment: local;
+  padding-top: 0;
+}
+#dlg-how .ld-body { line-height: 32px; font-size: 13px; padding-bottom: 0; }
+#dlg-how h3 { margin: 32px 0 0; font-size: 26px; line-height: 32px; }
+#dlg-how h3:first-child { margin-top: 0; }
+#dlg-how ul { margin: 0 0 0 18px; }
+#dlg-how li { margin: 0; }
+#dlg-how table { margin: 0; border-collapse: collapse; }
+#dlg-how td { padding: 0 16px 0 0; height: 32px; line-height: 32px; border: 0; vertical-align: top; }
+#dlg-how kbd.key { line-height: 20px; vertical-align: 2px; margin-right: 4px; }
