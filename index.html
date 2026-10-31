@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#07090e">
   <title>Meme Duel: Typing Beat 'Em Up</title>
+  <meta name="description" content="Type the meme, beat the bot, or duel a friend online. A typing beat 'em up with paper stick figures, meme specials and secret moves.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307090e'/%3E%3Ctext x='32' y='46' font-size='38' font-family='Impact,sans-serif' font-weight='700' text-anchor='middle' fill='%23ffd23a'%3EMD%3C/text%3E%3C/svg%3E">
-  <meta name="description" content="Type the meme, beat the bot. A typing beat 'em up with animated paper stickmen, power-up auras and meme specials.">
 
   <!-- Fonts load without blocking first paint; the CSS falls back to system fonts until they arrive -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,6 +15,7 @@
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Teko:wght@700&family=Permanent+Marker&family=VT323&display=swap"></noscript>
 
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="src/landing/landing.css">
 
   <!-- Import map for modern standard ES modules without bundler -->
   <script type="importmap">
@@ -25,31 +26,105 @@
   }
   </script>
 
-  <!-- Fetch the engine and every game module in parallel instead of one import at a time -->
-  <link rel="modulepreload" href="./assets/libs/three.module.js">
-  <link rel="modulepreload" href="./assets/libs/three.core.js">
-  <link rel="modulepreload" href="./src/combat/comboEngine.js">
-  <link rel="modulepreload" href="./src/combat/difficulty.js">
-  <link rel="modulepreload" href="./src/combat/fightDirector.js">
-  <link rel="modulepreload" href="./src/combat/promptManager.js">
-  <link rel="modulepreload" href="./src/core/app.js">
-  <link rel="modulepreload" href="./src/core/audioSystem.js">
-  <link rel="modulepreload" href="./src/core/inputManager.js">
-  <link rel="modulepreload" href="./src/core/perfMonitor.js">
-  <link rel="modulepreload" href="./src/render/arenas/arenaManager.js">
-  <link rel="modulepreload" href="./src/render/effects/effectsManager.js">
-  <link rel="modulepreload" href="./src/render/stickman/paperStandee.js">
+  <!-- Only the landing page's own modules load up front. The game is fetched when you press Play
+       (and warmed up in the background once this page is idle). -->
+  <link rel="modulepreload" href="./src/landing/landing.js">
   <link rel="modulepreload" href="./src/render/stickman/stickmanRig.js">
-  <link rel="modulepreload" href="./src/ui/memeComboMenu.js">
-  <link rel="modulepreload" href="./src/ui/memeReactions.js">
-  <link rel="modulepreload" href="./src/ui/modeSelect.js">
-  <link rel="modulepreload" href="./src/ui/retroHud.js">
 </head>
-<body>
-  <!-- Three.js 3D Viewport & UI Root -->
+<body class="landing-active">
+  <main id="landing">
+    <div class="ld-bg" aria-hidden="true"></div>
+
+    <div class="ld-shell">
+      <section class="ld-left">
+        <p class="ld-eyebrow">TYPING BEAT 'EM UP</p>
+        <div class="ld-title-wrap"><h1 class="ld-title">MEME DUEL</h1></div>
+        <p class="ld-tag">Type the meme. <b>Every letter is a punch</b>, every phrase fires a special move, and the meme plays over your head while you do it.</p>
+        <p class="ld-tag" id="ld-invite" hidden></p>
+
+        <ul class="ld-menu" aria-label="Main menu">
+          <li><button class="menu-btn" data-action="bot"><span class="mb-label">Play vs Bot</span><span class="mb-sub">Easy, Medium or Hard</span><span class="mb-key">1</span></button></li>
+          <li><button class="menu-btn" data-action="online"><span class="mb-label">Play Online</span><span class="mb-sub">Quick match or a room code</span><span class="mb-key">2</span></button></li>
+          <li><button class="menu-btn" data-action="how"><span class="mb-label">How to Play</span><span class="mb-sub">Controls, moves and bot tips</span><span class="mb-key">3</span></button></li>
+          <li><button class="menu-btn" data-action="memes"><span class="mb-label">Meme Gallery</span><span class="mb-sub">All 72 memes and their moves</span><span class="mb-key">4</span></button></li>
+        </ul>
+
+        <p class="ld-foot">Made for a desktop browser with a keyboard.</p>
+      </section>
+
+      <section class="ld-stage-wrap">
+        <div class="ld-stage">
+          <div class="ld-stage-frame"><canvas id="ld-canvas" aria-label="A preview of the game: a paper stick figure beats another with a combo and a beam while a meme plays overhead"></canvas></div>
+        </div>
+        <div class="ld-steps">
+          <div class="ld-step"><div class="n">1</div><h3>TYPE</h3><p>Each meme gives you its catchphrase to type.</p></div>
+          <div class="ld-step"><div class="n">2</div><h3>STRIKE</h3><p>Every letter throws a hit. Finish a word for a bonus.</p></div>
+          <div class="ld-step"><div class="n">3</div><h3>MEME</h3><p>Finish the phrase: the clip plays and a special move fires.</p></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- How to play -->
+    <dialog class="ld-dialog" id="dlg-how" aria-labelledby="how-title">
+      <div class="ld-dialog-inner">
+        <header><h2 id="how-title">HOW TO PLAY</h2><p>Nothing ever pauses. Keep typing.</p></header>
+        <div class="ld-body">
+          <h3>The loop</h3>
+          <ul>
+            <li>Type the phrase on the paper strip. Every correct letter throws a strike; every 4th hit in a row is a finisher.</li>
+            <li>Finish a word for a bonus hit. Finish the whole phrase to play its meme and fire its special move.</li>
+            <li>A typo breaks your combo and can invite a counter-attack.</li>
+          </ul>
+          <h3>Controls</h3>
+          <table>
+            <tr><td><kbd class="key">A-Z</kbd> <kbd class="key">0-9</kbd></td><td>Type the phrase. Every letter is for typing.</td></tr>
+            <tr><td><kbd class="key">&larr;</kbd> <kbd class="key">&rarr;</kbd></td><td>Walk</td></tr>
+            <tr><td><kbd class="key">&uarr;</kbd></td><td>Jump: clears low sweeps and grabs</td></tr>
+            <tr><td><kbd class="key">&darr;</kbd></td><td>Hold to guard: blocks most damage, but you hit softer</td></tr>
+            <tr><td><kbd class="key">Space</kbd></td><td>Air launcher (types a space when the phrase needs one)</td></tr>
+            <tr><td><kbd class="key">Enter</kbd></td><td>Ground slam</td></tr>
+            <tr><td><kbd class="key">Tab</kbd></td><td>Dash and dodge: a moment of invulnerability</td></tr>
+            <tr><td><kbd class="key">Shift</kbd></td><td>Throw a meme at the opponent</td></tr>
+            <tr><td><kbd class="key">Caps</kbd> <kbd class="key">`</kbd></td><td>Rage mode</td></tr>
+            <tr><td><kbd class="key">Esc</kbd></td><td>Menu: difficulty, arena, graphics, secret moves</td></tr>
+          </table>
+          <h3>The special moves</h3>
+          <table>
+            <tr><td>Beam finisher</td><td>Charge an orb, blast a beam across the arena</td></tr>
+            <tr><td>Meteor slam</td><td>Launch them skyward, spike them into the floor</td></tr>
+            <tr><td>Meme flurry</td><td>Ten rapid strikes ending in a launching kick</td></tr>
+            <tr><td>Time skip</td><td>The screen goes dark, then all the damage lands at once</td></tr>
+            <tr><td>Power surge</td><td>Jump to your next power form and heal</td></tr>
+          </table>
+          <h3>Beating the bot</h3>
+          <ul>
+            <li>Every attack is telegraphed. <b>HEAVY!</b> is slow: Tab away. <b>JUMP!</b> is a low sweep: jump it.</li>
+            <li>A red ring with <b>DODGE!</b> is an unblockable ultra: Tab it, time a jump, or hit the bot to interrupt it.</li>
+            <li>Hard bots learn: spam one move and they start reading it. Hide behind guard and they grab you.</li>
+            <li>There are secret moves. Nothing here will tell you how.</li>
+          </ul>
+        </div>
+        <footer><button class="menu-btn compact" data-close><span class="mb-label">Back</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Esc</span></button></footer>
+      </div>
+    </dialog>
+
+    <!-- Meme gallery -->
+    <dialog class="ld-dialog" id="dlg-memes" aria-labelledby="memes-title">
+      <div class="ld-dialog-inner">
+        <header><h2 id="memes-title">MEME GALLERY</h2><p id="gal-count">Loading...</p></header>
+        <div class="ld-body">
+          <div class="gal-player" id="gal-player"><video controls playsinline></video><div class="cap"></div></div>
+          <div class="gal-filters" id="gal-filters"></div>
+          <div class="gal-grid" id="gal-grid"></div>
+        </div>
+        <footer><button class="menu-btn compact" data-close><span class="mb-label">Back</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Esc</span></button></footer>
+      </div>
+    </dialog>
+  </main>
+
+  <!-- Three.js 3D Viewport & UI Root (the game mounts here when you press Play) -->
   <div id="game-container"></div>
 
-  <!-- Boot Main Application -->
-  <script type="module" src="./src/core/app.js"></script>
+  <script type="module" src="./src/landing/landing.js"></script>
 </body>
 </html>

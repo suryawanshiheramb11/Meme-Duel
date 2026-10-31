@@ -151,6 +151,36 @@ class AudioSystem {
     }
   }
 
+  // A low "boom" layered under heavy hits, slams and KOs so they feel like they have mass
+  playImpactBoom(level = 1) {
+    if (!this.initialized) this.init();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(130 + level * 20, t);
+    osc.frequency.exponentialRampToValueAtTime(34, t + 0.28);
+    gain.gain.setValueAtTime(0.55 * Math.min(1.4, level), t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start(t);
+    osc.stop(t + 0.32);
+    // a short noise crack on top
+    const len = Math.floor(this.ctx.sampleRate * 0.07);
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const noise = this.ctx.createBufferSource();
+    const ng = this.ctx.createGain();
+    noise.buffer = buf;
+    ng.gain.value = 0.25 * Math.min(1.4, level);
+    noise.connect(ng);
+    ng.connect(this.sfxGain);
+    noise.start(t);
+  }
+
   synthThock(detune = 0) {
     if (!this.ctx) return;
     const osc = this.ctx.createOscillator();

@@ -50,6 +50,46 @@ function buildTextures() {
     g.fillStyle = r;
     g.fillRect(-30, -30, 60, 60);
   });
+  // radial speed lines for impact frames
+  T.burst = canvasTex(256, 256, (g) => {
+    g.translate(128, 128);
+    g.fillStyle = '#fff';
+    const rays = 18;
+    for (let i = 0; i < rays; i++) {
+      const a = (i / rays) * Math.PI * 2 + (i % 2) * 0.05;
+      const len = i % 3 === 0 ? 124 : i % 3 === 1 ? 92 : 64;
+      const w = i % 3 === 0 ? 0.09 : 0.06;
+      g.save();
+      g.rotate(a);
+      g.beginPath();
+      g.moveTo(14, 0);
+      g.lineTo(len, -len * w * 0.35);
+      g.lineTo(len + 6, 0);
+      g.lineTo(len, len * w * 0.35);
+      g.closePath();
+      g.fill();
+      g.restore();
+    }
+    const r = g.createRadialGradient(0, 0, 0, 0, 0, 40);
+    r.addColorStop(0, 'rgba(255,255,255,1)');
+    r.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = r;
+    g.fillRect(-40, -40, 80, 80);
+  });
+  // crescent trail that follows a punch or kick
+  T.swoosh = canvasTex(256, 128, (g) => {
+    const grad = g.createLinearGradient(0, 0, 256, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.55, 'rgba(255,255,255,0.85)');
+    grad.addColorStop(1, 'rgba(255,255,255,1)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.moveTo(8, 64);
+    g.quadraticCurveTo(120, 6, 250, 40);
+    g.quadraticCurveTo(130, 30, 8, 64);
+    g.closePath();
+    g.fill();
+  });
   T.ring = canvasTex(256, 256, (g) => {
     const r = g.createRadialGradient(128, 128, 0, 128, 128, 128);
     r.addColorStop(0, 'rgba(255,255,255,0)');
@@ -182,6 +222,8 @@ function buildTextures() {
 }
 
 const AURA = {
+  rage: { color: 0xff2a1a, inner: 0xffd2a0, glow: 0xff7a4a, lightning: '#ff7a5a', label: 'FINAL FORM' }, // the bot's last stand
+
   ssj:  { color: 0xffc02a, inner: 0xfff0a0, glow: 0xffe27a, lightning: null,      label: 'GOLDEN RAGE' },
   blue: { color: 0x2fb0ff, inner: 0xbdeeff, glow: 0x9be8ff, lightning: '#8fe6ff', label: 'BLUE SURGE' },
   ui:   { color: 0xc9d4ff, inner: 0xffffff, glow: 0xffffff, lightning: '#ffffff', label: 'SILVER INSTINCT' }
@@ -423,6 +465,9 @@ export class EffectsManager {
     this.ambient = { type: 'none', items: [] };
     this.ambientCenter = 0;
     this.afterimagePool = [];
+    this.projectiles = []; // thrown memes
+    this.rain = []; // falling memes (the secret move)
+    this.thumbCache = new Map();
     this.quality = 2; // 0 low, 1 medium, 2 high; set by the performance monitor
     this.shakeFn = () => {};
 
@@ -447,6 +492,107 @@ export class EffectsManager {
     this.ambient.items.forEach((it, i) => {
       it.sprite.visible = i < Math.ceil(n * keep);
     });
+  }
+
+  // ----------------------------------------------------------- thrown memes
+  thumbTexture(url) {
+    if (!this.thumbCache.has(url)) {
+      const tex = new THREE.TextureLoader().load(url);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      this.thumbCache.set(url, tex);
+    }
+    return this.thumbCache.get(url);
+  }
+
+  memeCard(url, scale = 1) {
+    const g = new THREE.Group();
+    const frame = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.08 * scale, 0.68 * scale),
+      new THREE.MeshBasicMaterial({ color: 0xf2f4f8, side: THREE.DoubleSide })
+    );
+    const pic = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.96 * scale, 0.56 * scale),
+      new THREE.MeshBasicMaterial({ map: this.thumbTexture(url), side: THREE.DoubleSide })
+    );
+    pic.position.z = 0.01;
+    g.add(frame, pic);
+    g.position.z = 0.4;
+    this.scene.add(g);
+    return g;
+  }
+
+  disposeCard(g) {
+    this.scene.remove(g);
+    g.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose(); // the cached texture is shared and stays
+    });
+  }
+
+  /**
+   * Hurl a meme card across the arena. It reports when it reaches `target`; the caller decides
+   * whether that's a hit, a block, a dodge or a miss over the top.
+   */
+  throwMeme({ fromX, fromY, dir, url, target, speed = 9, onArrive }) {
+    const mesh = this.memeCard(url);
+    mesh.position.set(fromX, fromY, 0.4);
+    this.projectiles.push({ mesh, x: fromX, y: fromY, dir, speed, target, onArrive, t: 0, trail: 0 });
+  }
+
+  updateProjectiles(dt) {
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      p.t += dt;
+      p.x += p.dir * p.speed * dt;
+      const wobble = Math.sin(p.t * 14) * 0.05;
+      p.mesh.position.set(p.x, p.y + wobble, 0.4);
+      p.mesh.rotation.z = -p.dir * p.t * 9;
+      p.trail -= dt;
+      if (p.trail <= 0) {
+        p.trail = 0.03;
+        this.particles.spawn({ map: this.T.glow, x: p.x - p.dir * 0.3, y: p.y, z: 0.36, life: 0.25, size0: 0.28, size1: 0, color: 0xffe27a, alpha: 0.8 });
+      }
+      const arrived = p.dir > 0 ? p.x >= p.target.x - 0.3 : p.x <= p.target.x + 0.3;
+      if (arrived || p.t > 2.6) {
+        if (arrived && p.onArrive) p.onArrive(p.target);
+        this.disposeCard(p.mesh);
+        this.projectiles.splice(i, 1);
+      }
+    }
+  }
+
+  /** A shower of meme cards that drop onto `x` one after another; onLand(i) fires as each lands. */
+  memeRain({ x, urls, count = 14, span = 1.5, onLand }) {
+    for (let i = 0; i < count; i++) {
+      const url = urls[i % urls.length];
+      const mesh = this.memeCard(url, 0.8);
+      const delay = (i / count) * span;
+      const px = x + (Math.random() - 0.5) * 1.6;
+      mesh.position.set(px, 7, 0.4);
+      mesh.visible = false;
+      this.rain.push({ mesh, px, y: 7, vy: 0, delay, index: i, onLand, spin: (Math.random() - 0.5) * 8 });
+    }
+  }
+
+  updateRain(dt) {
+    for (let i = this.rain.length - 1; i >= 0; i--) {
+      const r = this.rain[i];
+      if (r.delay > 0) {
+        r.delay -= dt;
+        continue;
+      }
+      r.mesh.visible = true;
+      r.vy += 26 * dt;
+      r.y -= r.vy * dt;
+      r.mesh.position.set(r.px, r.y, 0.4);
+      r.mesh.rotation.z += r.spin * dt;
+      if (r.y <= 1.35) {
+        this.particles.spawn({ map: this.T.spark, x: r.px, y: 1.3, z: 0.5, rot: rnd(0, TAU), life: 0.2, size0: 0.3, size1: 1.1, color: 0xffe27a });
+        if (r.onLand) r.onLand(r.index);
+        this.disposeCard(r.mesh);
+        this.rain.splice(i, 1);
+      }
+    }
   }
 
   attachAura(fighter) {
@@ -501,6 +647,23 @@ export class EffectsManager {
         gravity: 8, drag: 2, life: rnd(0.25, 0.5), size0: rnd(0.08, 0.16), size1: 0, color
       });
     }
+  }
+
+  // Impact frame: a burst of speed lines and a hard flash at the point of contact
+  impact(x, y, { size = 1, color = 0xffffff, dir = 1 } = {}) {
+    this.particles.spawn({
+      map: this.T.burst, x, y, z: 0.45, rot: rnd(0, TAU), spin: dir * rnd(1, 4),
+      life: 0.17, size0: 0.5 * size, size1: 2.6 * size, color, alpha: 0.95
+    });
+    this.particles.spawn({ map: this.T.glow, x, y, z: 0.44, life: 0.12, size0: 0.9 * size, size1: 0.2, color: 0xffffff, alpha: 1 });
+  }
+
+  // A fast crescent that trails a limb through a strike
+  swoosh(x, y, { dir = 1, size = 1, color = 0xffffff, lift = 0 } = {}) {
+    this.particles.spawn({
+      map: this.T.swoosh, x: x + dir * 0.35 * size, y: y + lift, z: 0.3, rot: dir > 0 ? rnd(-0.35, 0.1) : Math.PI + rnd(-0.1, 0.35),
+      vx: dir * 5, life: 0.16, size0: 1.0 * size, size1: 1.5 * size, aspect: 1.9, color, alpha: 0.85
+    });
   }
 
   dust(x, count = 6, dir = 0) {
@@ -859,6 +1022,8 @@ export class EffectsManager {
       if (!this.timed[i].update(dt)) this.timed.splice(i, 1);
     }
     this.updateBeams(dt);
+    this.updateProjectiles(dt);
+    this.updateRain(dt);
     this.updateAmbient(dt, camX);
   }
 }

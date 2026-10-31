@@ -1,6 +1,7 @@
 // Keyboard Warrior Stickman - Authentic "Meme Combo Maker" & Arena Switcher Menu
 import { ARENAS } from '../render/arenas/arenaManager.js';
 import { DIFFICULTIES } from '../combat/difficulty.js';
+import { SECRETS } from '../combat/secrets.js';
 
 const FORM_CHOICES = [
   ['auto', 'Auto (by rank)'],
@@ -80,6 +81,13 @@ export class MemeComboMenu {
                 ).join('')}
               </div>
               <span class="tip-text">Auto powers up as your style rank climbs: A = gold, SS = blue, SSS = silver. CAPS LOCK or the backtick key forces at least gold.</span>
+            </div>
+
+            <!-- Section: Secret moves codex -->
+            <div class="menu-section">
+              <label class="section-title">SECRET MOVES <span id="secret-count"></span></label>
+              <div id="secret-list" class="secret-list"></div>
+              <span class="tip-text">Four hidden moves are tapped in on the arrow keys. Find one and it's added here.</span>
             </div>
 
             <!-- Section: Attack guide -->
@@ -300,6 +308,20 @@ export class MemeComboMenu {
     }
   }
 
+  // The codex: a found secret shows its name, code and effect; the others only give a riddle
+  renderSecrets() {
+    const list = document.getElementById('secret-list');
+    if (!list || !this.combo) return;
+    const found = this.combo.foundSecrets;
+    document.getElementById('secret-count').textContent = `${found.length} / ${SECRETS.length} FOUND`;
+    const arrows = { U: '\u2191', D: '\u2193', L: '\u2190', R: '\u2192' };
+    list.innerHTML = SECRETS.map((s) =>
+      found.includes(s.id)
+        ? `<div class="secret found"><b>${s.name}</b><span class="code">${[...s.code].map((c) => arrows[c]).join(' ')}</span><span>${s.effect}</span></div>`
+        : `<div class="secret locked"><b>???</b><span>${s.hint}</span></div>`
+    ).join('');
+  }
+
   syncDifficulty() {
     if (!this.director) return;
     const key = this.director.diffKey;
@@ -310,6 +332,7 @@ export class MemeComboMenu {
 
   open() {
     this.syncDifficulty();
+    this.renderSecrets();
     this.isOpen = true;
     this.modal.classList.remove('hidden');
     this.customInput.focus();

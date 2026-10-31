@@ -28,6 +28,7 @@
     "electron": "^44.6.0"
   },
   "dependencies": {
+    "peerjs": "^1.5.5",
     "three": "^0.186.1"
   }
 }

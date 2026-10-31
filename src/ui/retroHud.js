@@ -78,6 +78,7 @@ export class RetroHud {
         <span class="k-chip"><kbd>&larr;</kbd><kbd>&rarr;</kbd> MOVE</span>
         <span class="k-chip"><kbd>&uarr;</kbd> JUMP</span>
         <span class="k-chip"><kbd>&darr;</kbd> GUARD</span>
+        <span class="k-chip" id="chip-meme"><kbd>SHIFT</kbd> MEME<i class="chip-fill"></i></span>
       </div>
 
       <!-- Red Screen Flash on Miss / Error -->
@@ -105,6 +106,8 @@ export class RetroHud {
     this.flashEl = document.getElementById('screen-miss-flash');
     this.rageEl = document.getElementById('rage-aura-vignette');
 
+    this.memeChip = document.getElementById('chip-meme');
+    this.memeChipFill = this.memeChip.querySelector('.chip-fill');
     this.queueEl = document.getElementById('meme-queue');
     this.lastQueueKey = null;
     this.heroHp = document.getElementById('hero-hp-fill');
@@ -128,12 +131,17 @@ export class RetroHud {
       this.formChip.style.borderColor = FORM_COLORS[combo.form];
       this.formChip.classList.toggle('powered', combo.form !== 'base');
     }
-    const nameKey = `${director.enemyNumber}|${director.diffKey}`;
+    const nameKey = `${director.enemyNumber}|${director.diffKey}|${director.diff.personalityLabel || ''}`;
     if (nameKey !== this.lastEnemyNumber) {
       this.lastEnemyNumber = nameKey;
-      this.enemyName.textContent = `FOE #${director.enemyNumber} \u00b7 ${director.diff.label}`;
+      const tag = director.diff.personalityLabel ? ` \u00b7 ${director.diff.personalityLabel}` : '';
+      this.enemyName.textContent = `FOE #${director.enemyNumber} \u00b7 ${director.diff.label}${tag}`;
       this.enemyName.dataset.level = director.diffKey;
     }
+    // meme-throw cooldown
+    const ready = combo.memeThrowFraction();
+    this.memeChip.classList.toggle('ready', ready >= 1);
+    this.memeChipFill.style.transform = `scaleX(${ready})`;
     this.enemyKos.textContent = `KO ${combo.kills}`;
   }
 

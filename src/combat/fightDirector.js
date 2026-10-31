@@ -2,7 +2,7 @@
 // Runs everything that happens *between* keystrokes: the enemy walking in and fighting back,
 // fighters facing each other, the hero hovering during air juggles, afterimage trails,
 // KO / respawn, and the camera focus point.
-import { ATTACKS, DIFFICULTIES, DEFAULT_DIFFICULTY, randBetween, pickWeighted, saveDifficulty } from './difficulty.js';
+import { ATTACKS, DIFFICULTIES, DEFAULT_DIFFICULTY, PERSONALITIES, withPersonality, randBetween, pickWeighted, saveDifficulty } from './difficulty.js';
 
 const FIGHT_GAP = 1.05; // preferred distance between fighters
 const ENEMY_BOUND = 6.1;
@@ -34,17 +34,77 @@ export class FightDirector {
     this.paused = false; // true while the mode picker is up
 
     this.diffKey = DEFAULT_DIFFICULTY;
-    this.diff = DIFFICULTIES[this.diffKey];
+    this.baseDiff = DIFFICULTIES[this.diffKey];
+    this.personality = 'balanced';
+    this.diff = withPersonality(this.baseDiff, this.personality);
     combo.difficulty = this.diff;
     combo.difficultyKey = this.diffKey;
 
+    // What the bot has learned about how you play (see updateHabits)
+    this.habits = { jump: [], launcher: [], dashIn: [], hit: [] };
+    this.guardAcc = 0;
+    this.enraged = false; // the bot's final form
+    this.memeTimer = Infinity; // seconds until the bot next hurls a meme
+    this.pendingChain = 0;
+
     combo.onMiss = () => this.punish();
     combo.onDashIn = () => this.counterPoke();
+    combo.onHabit = (kind) => this.noteHabit(kind);
+    combo.onParry = () => this.forceAttack('punch');
     this.resetUltraTimer();
+  }
+
+  // ------------------------------------------------------------- learning the player
+  noteHabit(kind) {
+    const list = this.habits[kind];
+    if (!list) return;
+    list.push(performance.now());
+    if (list.length > 24) list.shift();
+  }
+
+  // What you've been doing lately, as the bot sees it
+  readHabits() {
+    const now = performance.now();
+    const within = (arr, ms) => arr.filter((t) => now - t < ms).length;
+    return {
+      jumpy: within(this.habits.jump, 6000) >= 2,
+      launcherSpam: within(this.habits.launcher, 10000) >= 2,
+      dashy: within(this.habits.dashIn, 8000) >= 2,
+      fast: within(this.habits.hit, 3000) >= 10,
+      turtle: this.guardAcc > 2.4
+    };
+  }
+
+  updateHabits(dt) {
+    const h = this.hero;
+    this.guardAcc = Math.max(0, Math.min(6, this.guardAcc + (h.guarding ? dt : -dt * 0.5)));
+    if (!(this.diff.smart && this.diff.smart.habits)) {
+      this.combo.dynamic = {};
+      this.habitState = null;
+      return;
+    }
+    const hb = (this.habitState = this.readHabits());
+    // The bot adapts: spam the launcher and it starts reading it, hammer keys and it guards more,
+    // dash in over and over and it meets you with a poke.
+    this.combo.dynamic = { reads: hb.launcherSpam ? 0.3 : 0, guard: hb.fast ? 0.12 : 0, poke: hb.dashy ? 0.25 : 0 };
   }
 
   resetUltraTimer() {
     this.ultraTimer = this.diff.ultra ? randBetween(this.diff.ultra.every) * 0.7 : Infinity;
+    const meme = this.diff.smart && this.diff.smart.meme;
+    this.memeTimer = meme ? randBetween(meme.every) * 0.8 : Infinity;
+  }
+
+  rollPersonality() {
+    if (this.diffKey === 'easy') return 'balanced';
+    const keys = Object.keys(PERSONALITIES);
+    return keys[Math.floor(Math.random() * keys.length)];
+  }
+
+  rebuildDiff() {
+    this.diff = withPersonality(this.baseDiff, this.personality);
+    this.combo.difficulty = this.diff;
+    this.combo.difficultyKey = this.diffKey;
   }
 
   // The bot decides to throw a specific attack right away (it read what you just did).
@@ -55,16 +115,19 @@ export class FightDirector {
 
   // You dashed in from range: harder bots meet you with a quick poke.
   counterPoke() {
-    if (Math.random() < this.diff.pokesDashIn && !this.attack && this.enemy.health > 0) this.forceAttack('jab');
+    const chance = this.diff.pokesDashIn + (this.combo.dynamic.poke || 0);
+    if (Math.random() < chance && !this.attack && this.enemy.health > 0) this.forceAttack('jab');
   }
 
   // Switch the bot's level. The current enemy is rescaled in place, keeping its health fraction.
   setDifficulty(key, { save = true } = {}) {
     if (!DIFFICULTIES[key]) return;
     this.diffKey = key;
-    this.diff = DIFFICULTIES[key];
-    this.combo.difficulty = this.diff;
-    this.combo.difficultyKey = key;
+    this.baseDiff = DIFFICULTIES[key];
+    this.personality = this.rollPersonality();
+    this.rebuildDiff();
+    this.enraged = false;
+    this.enemy.form = 'base';
     const e = this.enemy;
     const frac = e.maxHealth > 0 ? e.health / e.maxHealth : 1;
     e.maxHealth = this.scaledEnemyHealth();
@@ -93,6 +156,7 @@ export class FightDirector {
     this.sinceHeroHurt += dt;
 
     this.updateFacing();
+    this.updateHabits(dt);
     this.updateEnemy(dt);
     this.updateHero(dt);
     this.updateTrails(dt);
@@ -120,6 +184,7 @@ export class FightDirector {
   updateEnemy(dt) {
     const h = this.hero;
     const e = this.enemy;
+    const smart = this.diff.smart;
 
     if (e.health <= 0) {
       e.walking = false;
@@ -128,6 +193,9 @@ export class FightDirector {
       if (this.enemyDownTimer > 2.6 && !e.isAirborne) this.respawnEnemy();
       return;
     }
+
+    // Last stand: the hardest bot has one more form
+    if (smart && smart.rage && !this.enraged && !this.entering && e.health < e.maxHealth * 0.3) this.goFinalForm();
 
     // Landing a hit on a winding-up bot interrupts the attack, which is the counter to its ultra
     if (this.attack && (e.pose === 'hurt' || e.isAirborne)) {
@@ -146,7 +214,7 @@ export class FightDirector {
       const want = h.x + side * FIGHT_GAP;
       const diff = want - e.x;
       if (Math.abs(diff) > 0.1) {
-        const speed = this.entering ? 6.2 : this.diff.speed;
+        const speed = this.entering ? 6.2 : this.diff.speed * (this.enraged ? 1.3 : 1);
         e.x += Math.sign(diff) * Math.min(Math.abs(diff), speed * dt);
         e.walking = true;
         e.walkSpeed = speed;
@@ -154,8 +222,13 @@ export class FightDirector {
       if (this.entering && Math.abs(e.x - h.x) < 4.5) this.entering = false;
 
       this.attackCooldown -= dt;
-      if (!this.entering) this.ultraTimer -= dt;
-      const heroOpen = !h.isAirborne && h.health > 0 && h.lockTimer <= 0 && !this.entering;
+      if (!this.entering) {
+        this.ultraTimer -= dt;
+        this.memeTimer -= dt;
+      }
+      // A smart bot will swing at you in mid-air if you keep jumping; a plain one waits for you to land
+      const jumpedByYou = h.isAirborne && !h.hover && h.selfJump && h.y > 0.4;
+      const heroOpen = h.health > 0 && h.lockTimer <= 0 && !this.entering && (!h.isAirborne || (smart && jumpedByYou));
       const closeEnough = Math.abs(e.x - h.x) < (this.ultraTimer <= 0 ? 2.0 : 1.5);
       if (this.attackCooldown <= 0 && closeEnough && heroOpen) this.startAttack();
     }
@@ -163,6 +236,11 @@ export class FightDirector {
     if (this.attack) {
       const a = this.attack;
       a.t += dt;
+      // A feint: wind up, then bail out to see how you react (and punish it if you flinch)
+      if (a.feint && !a.struck && a.t >= a.windup * 0.55) {
+        this.feintOff();
+        return;
+      }
       if (!a.struck && a.t >= a.windup) {
         a.struck = true;
         e.setPose(a.spec.pose, 0.3, true);
@@ -176,30 +254,72 @@ export class FightDirector {
       }
       if (a.t >= a.windup + (a.double ? 0.7 : 0.45)) {
         this.attack = null;
-        const idleFor = (performance.now() - this.combo.lastActionAt) / 1000;
-        let cooldown = randBetween(idleFor > 2 ? this.diff.idleCooldown : this.diff.cooldown);
-        // Smells blood: presses harder when you're low on health
-        if (this.diffKey === 'hard' && h.health < h.maxHealth * 0.35) cooldown *= 0.7;
-        this.attackCooldown = cooldown;
+        this.afterAttack(a);
       }
     }
+  }
+
+  // What to do once an attack is over: keep the pressure on, or reset
+  afterAttack(a) {
+    const h = this.hero;
+    const smart = this.diff.smart;
+    const CHAIN = ['punch', 'heavy', 'jab'];
+    if (smart && a.landed && a.chain < smart.chain && Math.random() < smart.chainChance && ['jab', 'punch', 'heavy'].includes(a.type)) {
+      this.queuedAttack = CHAIN[a.chain % CHAIN.length];
+      this.pendingChain = a.chain + 1;
+      this.attackCooldown = 0.14;
+      return;
+    }
+    this.pendingChain = 0;
+    const idleFor = (performance.now() - this.combo.lastActionAt) / 1000;
+    let cooldown = randBetween(idleFor > 2 ? this.diff.idleCooldown : this.diff.cooldown);
+    // Smells blood: presses harder when you're low on health, and harder still in its final form
+    if (this.diffKey === 'hard' && h.health < h.maxHealth * 0.35) cooldown *= 0.7;
+    if (this.enraged) cooldown *= 0.6;
+    this.attackCooldown = cooldown;
+  }
+
+  feintOff() {
+    const h = this.hero;
+    const e = this.enemy;
+    const flinched = h.invulnTimer > 0 || h.guarding || h.y > 0.3;
+    this.attack = null;
+    e.setPose('guard', 0.1, true);
+    this.fx.floatText('FEINT!', e.x, e.y + 2.4, { color: '#ffb02e', size: 22, cls: 'fx-pop' });
+    if (flinched) this.forceAttack(h.guarding ? 'grab' : 'jab'); // you reacted: that's a punish
+    else this.attackCooldown = 0.5;
   }
 
   // Pick and telegraph the next attack. Every attack warns you: pose, text and (for the ultra) a red ring.
   startAttack() {
     const e = this.enemy;
+    const h = this.hero;
+    const smart = this.diff.smart;
+    const habits = this.habitState || {};
     let type;
     if (this.queuedAttack) {
       type = this.queuedAttack;
       this.queuedAttack = null;
     } else if (this.diff.ultra && this.ultraTimer <= 0) {
       type = 'ultra';
-      this.ultraTimer = randBetween(this.diff.ultra.every);
+      this.ultraTimer = randBetween(this.diff.ultra.every) * (this.enraged ? 0.55 : 1);
+    } else if (smart && smart.meme && this.memeTimer <= 0 && !h.isAirborne) {
+      type = 'meme';
+      this.memeTimer = randBetween(smart.meme.every);
+    } else if (smart && h.isAirborne && h.selfJump && h.y > 0.4) {
+      type = 'anti';
     } else {
-      type = pickWeighted(this.diff.attackWeights);
+      const weights = { ...this.diff.attackWeights };
+      if (smart && habits.turtle) {
+        // You're hiding behind guard, so the bot reaches for the move guard can't stop
+        weights.grab = Object.values(weights).reduce((n, w) => n + w, 0) * 0.9;
+      }
+      type = pickWeighted(weights);
     }
     const spec = ATTACKS[type];
-    const windup = type === 'ultra' ? this.diff.ultra.windup : this.diff.windup * spec.windup;
+    let windup =
+      type === 'ultra' ? this.diff.ultra.windup : type === 'meme' ? smart.meme.windup : this.diff.windup * spec.windup;
+    if (this.enraged) windup *= 0.85;
     this.attack = {
       type,
       spec,
@@ -207,7 +327,10 @@ export class FightDirector {
       windup,
       struck: false,
       second: false,
+      landed: false,
+      chain: this.pendingChain || 0,
       double: (type === 'punch' || type === 'jab') && Math.random() < this.diff.doubleStrike,
+      feint: !!(smart && (type === 'punch' || type === 'heavy') && Math.random() < smart.feint),
       punish: this.punishPending
     };
     this.punishPending = false;
@@ -216,6 +339,11 @@ export class FightDirector {
     if (spec.tell) {
       const ultra = type === 'ultra';
       this.fx.floatText(spec.tell, e.x, e.y + 2.5, { color: ultra ? '#ff4455' : '#ffb02e', size: ultra ? 38 : 26, cls: 'fx-pop' });
+    }
+    if (type === 'meme') {
+      // Back off to range first, so there's a gap to throw across (and time to react)
+      const away = Math.sign(e.x - h.x) || 1;
+      e.slideTo(Math.max(-ENEMY_BOUND, Math.min(ENEMY_BOUND, e.x + away * 2.4)), 18);
     }
     if (type === 'ultra') {
       this.fx.ringBurst(e.x, 1.1, 5.5, 0xff3040, windup);
@@ -230,10 +358,15 @@ export class FightDirector {
     const h = this.hero;
     const e = this.enemy;
     const spec = a.spec;
+    if (a.type === 'meme') {
+      this.hurlMeme();
+      return;
+    }
     if (Math.abs(e.x - h.x) > spec.reach || h.health <= 0) return;
+    if (spec.antiAir && h.y <= 0.4) return; // you already landed: the anti-air whiffs
     const cx = (h.x + e.x) / 2;
 
-    // Jumping clears a low sweep and, if you time it, the ultra's shockwave
+    // Jumping clears a low sweep or a grab and, if you time it, the ultra's shockwave
     if ((spec.low && h.y > 0.45) || (a.type === 'ultra' && h.y > 0.8)) {
       this.fx.floatText('JUMPED IT!', h.x, 2.7, { color: '#9be8ff', size: 28, cls: 'fx-pop' });
       this.combo.addStylePoints(a.type === 'ultra' ? 40 : 20);
@@ -251,7 +384,7 @@ export class FightDirector {
       return;
     }
 
-    let dmg = this.diff.damage * spec.dmg + Math.min(4, this.combo.kills * 0.6);
+    let dmg = (this.diff.damage * spec.dmg + Math.min(4, this.combo.kills * 0.6)) * (this.enraged ? 1.25 : 1);
     let knock = spec.knock;
     let stun = spec.stun;
     const blocked = h.guarding && !spec.unblockable;
@@ -262,7 +395,7 @@ export class FightDirector {
     }
     // Mercy (easy/medium): standing idle can wear you down but never finish you; only a typo counter can.
     if (this.diff.mercy && !a.punish) dmg = Math.min(dmg, Math.max(0, h.health - 5));
-    const res = h.takeHit(dmg, { knock, stun, quiet: blocked, stagger: !blocked });
+    const res = h.takeHit(dmg, { knock, stun, quiet: blocked, stagger: !blocked, launch: blocked ? 0 : spec.launch || 0 });
     if (!res.hit) return;
 
     if (blocked) {
@@ -275,16 +408,91 @@ export class FightDirector {
       return;
     }
 
+    a.landed = true;
     this.sinceHeroHurt = 0;
     this.combo.onHeroHit();
-    const big = a.type === 'ultra' || a.type === 'heavy';
+    const big = a.type === 'ultra' || a.type === 'heavy' || a.type === 'grab';
     this.audio.playCombatHit(big ? 'crit' : 'heavy');
+    if (big) this.audio.playImpactBoom(a.type === 'ultra' ? 1.3 : 0.9);
     this.arena.triggerScreenShake(big ? 0.7 : 0.3);
+    this.arena.kick(-h.facing, big ? 0.3 : 0.12);
     this.fx.hitSpark(cx, 1.15, { size: big ? 1.7 : 1, color: 0xff6a6a, count: big ? 12 : 7 });
+    this.fx.impact(cx, 1.15, { size: big ? 1.6 : 0.9, color: 0xff7a7a, dir: -h.facing });
     this.fx.flash('#ff2020', big ? 0.4 : 0.22, big ? 0.4 : 0.25);
     if (a.type === 'ultra') this.fx.floatText('ULTRA!', e.x, e.y + 2.5, { color: '#ff4455', size: 40, cls: 'fx-pop fx-big' });
+    if (a.type === 'grab') this.fx.floatText('GRABBED!', h.x, 2.8, { color: '#ff9a3c', size: 30, cls: 'fx-pop' });
     if (this.memes) this.memes.trigger('hurt', { priority: res.ko ? 3 : 1, chance: res.ko ? 1 : 0.5, side: 'left' });
     if (res.ko) this.heroDownTimer = 0;
+  }
+
+  // ------------------------------------------------------------- the bot's secret moves
+  // The bot hurls a meme card across the arena. Jump it, guard it or Tab through it.
+  hurlMeme() {
+    const e = this.enemy;
+    const h = this.hero;
+    const clips = this.memes ? this.memes.clips.filter((c) => c.thumb) : [];
+    if (!clips.length) return;
+    const clip = clips[Math.floor(Math.random() * clips.length)];
+    const dir = Math.sign(h.x - e.x) || -1;
+    this.fx.throwMeme({
+      fromX: e.x + dir * 0.4,
+      fromY: e.y + 1.3,
+      dir,
+      url: `assets/memes/${clip.thumb}`,
+      target: h,
+      speed: 8.5,
+      onArrive: (t) => this.memeLands(t)
+    });
+  }
+
+  memeLands(h) {
+    if (h.health <= 0 || this.enemy.health <= 0) return;
+    if (h.y > 0.7) {
+      this.fx.floatText('JUMPED IT!', h.x, 2.7, { color: '#9be8ff', size: 28, cls: 'fx-pop' });
+      this.combo.addStylePoints(25);
+      return;
+    }
+    if (h.invulnTimer > 0) {
+      this.fx.floatText('PERFECT DODGE!', h.x, 2.7, { color: '#9be8ff', size: 30, cls: 'fx-pop' });
+      this.combo.addStylePoints(30);
+      this.combo.slowTimer = Math.max(this.combo.slowTimer, 0.3);
+      return;
+    }
+    const blocked = h.guarding;
+    let dmg = (this.diff.damage + Math.min(4, this.combo.kills * 0.6)) * (this.enraged ? 1.25 : 1);
+    if (blocked) dmg *= 0.3;
+    if (this.diff.mercy) dmg = Math.min(dmg, Math.max(0, h.health - 5));
+    const res = h.takeHit(dmg, { knock: blocked ? 0.05 : 0.5, stun: blocked ? 0 : 0.3, quiet: blocked, stagger: !blocked });
+    if (!res.hit) return;
+    this.fx.hitSpark(h.x, 1.4, { size: 1.1, color: blocked ? 0x7dd3ff : 0xffe27a });
+    this.fx.floatText(blocked ? 'BLOCKED' : "MEME'D!", h.x, 2.7, { color: blocked ? '#9be8ff' : '#ffd23a', size: 28, cls: 'fx-pop' });
+    this.audio.playCombatHit('heavy');
+    if (!blocked) {
+      this.sinceHeroHurt = 0;
+      this.combo.onHeroHit();
+      this.arena.triggerScreenShake(0.35);
+      if (this.memes) this.memes.trigger('hurt', { priority: 2, chance: 1, side: 'left' });
+    }
+    if (res.ko) this.heroDownTimer = 0;
+  }
+
+  // Below 30% health the hardest bot powers up one last time
+  goFinalForm() {
+    const e = this.enemy;
+    this.enraged = true;
+    e.form = 'rage';
+    e.auraBoost = 0.35;
+    e.setPose('charge', 0.9, true);
+    e.lock(0.9);
+    this.attack = null;
+    this.fx.powerUpBurst(e, 'rage');
+    this.fx.floatText('FINAL FORM!', e.x, 3.3, { color: '#ff5a4a', size: 46, cls: 'fx-pop fx-big' });
+    this.audio.playSound('streak_fire');
+    this.audio.playImpactBoom(1.2);
+    this.arena.triggerScreenShake(0.8);
+    this.arena.punchZoom(0.6);
+    if (this.diff.ultra) this.ultraTimer = Math.min(this.ultraTimer, 1.4);
+    if (this.memes) this.memes.trigger('rage', { priority: 3, side: 'right' });
   }
 
   respawnEnemy() {
@@ -294,6 +502,12 @@ export class FightDirector {
     this.enemyNumber++;
     e.revive();
     e.randomizeVariant();
+    // every new bot is a different opponent
+    this.enraged = false;
+    e.form = 'base';
+    e.auraBoost = 0;
+    this.personality = this.rollPersonality();
+    this.rebuildDiff();
     e.maxHealth = this.scaledEnemyHealth();
     e.health = e.maxHealth;
     // Run in from beyond the right edge of the screen

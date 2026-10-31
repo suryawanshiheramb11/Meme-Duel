@@ -16,6 +16,8 @@ import {
 } from './stickmanRig.js';
 
 const PLANE_SIZE = CANVAS_SIZE / PX_PER_UNIT; // world units
+// The figure is drawn on a canvas 1.5x denser than its 512-unit layout so cut edges and ink stay crisp
+const RENDER_SCALE = 1.5;
 const MESH_CENTER_Y = (GROUND_Y - CANVAS_SIZE / 2) / PX_PER_UNIT;
 const GRAVITY = 30;
 const FRICTION = 7;
@@ -60,6 +62,7 @@ export class PaperStandee {
 
     // Look
     this.form = 'base';
+    this.capColor = null; // lets the online opponent wear a different cap
     this.variant = isHero ? 'cap' : 'glasses';
     this.bigHair = false;
 
@@ -73,13 +76,15 @@ export class PaperStandee {
     this.flash = 0;
     this.strikeAlt = 0;
     this.anchors = null;
+    this.selfJump = false; // true while airborne from your own jump (a hit-launch doesn't count)
+    this.dazedUntil = 0; // "look behind you": takes extra damage until this time
     this.guarding = false; // holding guard: blocks most damage, deals less
     this.guardTimer = 0; // brief shield flash after a block
     this.quality = 2; // set by the performance monitor
     this.drawAccum = 0;
 
-    this.canvas = makeCanvas(CANVAS_SIZE, CANVAS_SIZE);
-    this.scratch = createScratch(makeCanvas);
+    this.canvas = makeCanvas(Math.round(CANVAS_SIZE * RENDER_SCALE), Math.round(CANVAS_SIZE * RENDER_SCALE));
+    this.scratch = createScratch(makeCanvas, RENDER_SCALE);
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.generateMipmaps = false;
@@ -214,6 +219,8 @@ export class PaperStandee {
     this.y = 0;
     this.slideTarget = null;
     this.isAirborne = false;
+    this.selfJump = false;
+    this.dazedUntil = 0;
     this.hover = false;
     this.pose = 'guard';
     this.flash = 0;
@@ -254,6 +261,7 @@ export class PaperStandee {
         this.y = 0;
         this.vy = 0;
         this.isAirborne = false;
+        this.selfJump = false;
         const dead = this.health <= 0;
         if (dead) this.setPose('knockdown', 99, true);
         else if (this.pose === 'air' || this.pose === 'jump' || this.pose === 'slam') this.setPose('guard', 0, true);
@@ -345,6 +353,7 @@ export class PaperStandee {
         time: this.time,
         flash: this.flash,
         bigHair: this.bigHair,
+        capColor: this.capColor,
         shield: this.guarding || this.guardTimer > 0,
         glow: this.quality >= 1
       },

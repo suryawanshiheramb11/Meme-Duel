@@ -9,7 +9,7 @@ export const CANVAS_SIZE = 512;
 export const GROUND_Y = 442;
 export const PX_PER_UNIT = 160; // canvas pixels per world unit
 const CX = CANVAS_SIZE / 2;
-const PAD = 15; // paper margin around the ink
+const PAD = 11; // paper margin around the ink (tight, like a figure cut out with scissors)
 
 const L = { thigh: 62, shin: 62, torso: 76, neck: 6, head: 27, upper: 44, fore: 46 };
 
@@ -98,45 +98,46 @@ export function computeSkeleton(p) {
 }
 
 // ---------------------------------------------------------------- paper textures
-let paperTile = null;
-function getPaperTile(makeCanvas) {
-  if (paperTile) return paperTile;
-  const c = makeCanvas(CANVAS_SIZE, CANVAS_SIZE);
+const paperTiles = new Map();
+function getPaperTile(makeCanvas, k) {
+  if (paperTiles.has(k)) return paperTiles.get(k);
+  const c = makeCanvas(Math.round(CANVAS_SIZE * k), Math.round(CANVAS_SIZE * k));
   const g = c.getContext('2d');
-  g.fillStyle = '#e9e9ee';
+  g.scale(k, k);
+  g.fillStyle = '#ecedf1';
   g.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  // crumple: random soft diagonal creases
+  // crumple: soft creases, kept subtle so the ink stays the sharpest thing on the figure
   let seed = 1337;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 70; i++) {
     const x = rnd() * CANVAS_SIZE, y = rnd() * CANVAS_SIZE;
     const a = rnd() * Math.PI, len = 30 + rnd() * 120;
-    g.strokeStyle = rnd() < 0.5 ? 'rgba(120,125,140,0.16)' : 'rgba(255,255,255,0.35)';
-    g.lineWidth = 1 + rnd() * 2;
+    g.strokeStyle = rnd() < 0.5 ? 'rgba(120,125,140,0.12)' : 'rgba(255,255,255,0.4)';
+    g.lineWidth = 1 + rnd() * 1.6;
     g.beginPath();
     g.moveTo(x, y);
     g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
     g.stroke();
   }
-  for (let i = 0; i < 700; i++) {
-    g.fillStyle = `rgba(110,115,130,${rnd() * 0.07})`;
+  for (let i = 0; i < 500; i++) {
+    g.fillStyle = `rgba(110,115,130,${rnd() * 0.06})`;
     g.fillRect(rnd() * CANVAS_SIZE, rnd() * CANVAS_SIZE, 2 + rnd() * 3, 2 + rnd() * 3);
   }
   // ruled lines + margin
-  g.strokeStyle = 'rgba(95,130,190,0.42)';
-  g.lineWidth = 1.5;
+  g.strokeStyle = 'rgba(95,130,190,0.4)';
+  g.lineWidth = 1.2;
   for (let y = 18; y < CANVAS_SIZE; y += 17) {
     g.beginPath();
     g.moveTo(0, y);
     g.lineTo(CANVAS_SIZE, y);
     g.stroke();
   }
-  g.strokeStyle = 'rgba(230,90,110,0.35)';
+  g.strokeStyle = 'rgba(230,90,110,0.34)';
   g.beginPath();
   g.moveTo(CX - 92, 0);
   g.lineTo(CX - 92, CANVAS_SIZE);
   g.stroke();
-  paperTile = c;
+  paperTiles.set(k, c);
   return c;
 }
 
@@ -162,9 +163,12 @@ function bodyPath(g, pts) {
   g.lineTo(pts.footF[0], pts.footF[1]);
 }
 
+// A scissor-cut outline: square limb ends, mitred corners and a faceted head, so the cut-out reads
+// as sharp straight snips instead of a soft rounded blob.
 function paperSilhouette(g, pts, extra) {
-  g.lineCap = 'round';
-  g.lineJoin = 'round';
+  g.lineCap = 'square';
+  g.lineJoin = 'miter';
+  g.miterLimit = 2.2;
   bodyPath(g, pts);
   g.lineWidth = 6 + 2 * (PAD + extra);
   g.stroke();
@@ -172,10 +176,21 @@ function paperSilhouette(g, pts, extra) {
   g.beginPath();
   g.moveTo(pts.hip[0], pts.hip[1]);
   g.lineTo(pts.neck[0], pts.neck[1]);
-  g.lineWidth = 62 + extra * 2;
+  g.lineWidth = 58 + extra * 2;
   g.stroke();
+  // head: an 11-sided snip around the circle
+  const R = L.head + PAD + extra;
+  const rot = rad(pts.headAngle) + 0.28;
   g.beginPath();
-  g.arc(pts.head[0], pts.head[1], L.head + PAD + extra, 0, Math.PI * 2);
+  for (let i = 0; i < 11; i++) {
+    const a = rot + (i / 11) * Math.PI * 2;
+    const rr = R * (i % 2 ? 1.04 : 0.97);
+    const x = pts.head[0] + Math.cos(a) * rr;
+    const y = pts.head[1] + Math.sin(a) * rr;
+    if (i) g.lineTo(x, y);
+    else g.moveTo(x, y);
+  }
+  g.closePath();
   g.fill();
 }
 
@@ -341,8 +356,8 @@ function drawEnemyGear(g, variant, time) {
   }
 }
 
-function drawCap(g) {
-  g.fillStyle = '#ffffff';
+function drawCap(g, color) {
+  g.fillStyle = color || '#ffffff';
   g.strokeStyle = '#0b0b0e';
   g.lineWidth = 4;
   g.beginPath();
@@ -366,33 +381,39 @@ export function drawStickman(canvas, poseState, opts, makeCanvas, scratch) {
   const pts = computeSkeleton(poseState);
   const style = FORM_STYLES[opts.form] || null;
 
-  g.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  // Everything below is drawn in 512-unit coordinates; k maps them onto a (usually denser) canvas
+  const k = canvas.width / CANVAS_SIZE;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, canvas.width, canvas.height);
+  g.setTransform(k, 0, 0, k, 0, 0);
 
   // 1. paper silhouette on an offscreen layer so the texture only lands on the cut-out
   const sil = scratch.sil;
   const sg = sil.getContext('2d');
-  sg.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  sg.setTransform(1, 0, 0, 1, 0, 0);
+  sg.clearRect(0, 0, sil.width, sil.height);
+  sg.setTransform(k, 0, 0, k, 0, 0);
   sg.globalCompositeOperation = 'source-over';
-  sg.strokeStyle = '#e9e9ee';
-  sg.fillStyle = '#e9e9ee';
+  sg.strokeStyle = '#ecedf1';
+  sg.fillStyle = '#ecedf1';
   paperSilhouette(sg, pts, 0);
   sg.globalCompositeOperation = 'source-atop';
-  sg.drawImage(getPaperTile(makeCanvas), 0, 0);
+  sg.drawImage(getPaperTile(makeCanvas, k), 0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-  // 2. cut edge (dark rim, offset down-right so the paper has thickness)
+  // 2. cut edge: a crisp dark rim with a hard offset, so the paper has thickness without any blur
   g.save();
-  g.translate(3, 5);
-  g.strokeStyle = '#50545e';
-  g.fillStyle = '#50545e';
-  paperSilhouette(g, pts, 3);
+  g.translate(2.5, 3.5);
+  g.strokeStyle = '#262932';
+  g.fillStyle = '#262932';
+  paperSilhouette(g, pts, 2);
   g.restore();
-  g.drawImage(sil, 0, 0);
+  g.drawImage(sil, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
   // 3. ink
   g.lineCap = 'round';
   g.lineJoin = 'round';
-  g.strokeStyle = '#0b0b0e';
-  g.lineWidth = 6;
+  g.strokeStyle = '#08080b';
+  g.lineWidth = 5.4;
   bodyPath(g, pts);
   g.stroke();
   // head
@@ -419,7 +440,7 @@ export function drawStickman(canvas, poseState, opts, makeCanvas, scratch) {
   const glow = opts.glow !== false;
   if (opts.isHero && style) drawHair(g, style, opts.time, opts.bigHair, glow);
   drawFace(g, { isHero: opts.isHero, variant: opts.variant, face: opts.face, style, time: opts.time, glow });
-  if (opts.isHero && !style) drawCap(g);
+  if (opts.isHero && !style) drawCap(g, opts.capColor);
   g.restore();
 
   // guard shield: a glowing arc held out in front
@@ -450,8 +471,9 @@ export function drawStickman(canvas, poseState, opts, makeCanvas, scratch) {
   return pts;
 }
 
-export function createScratch(makeCanvas) {
-  return { sil: makeCanvas(CANVAS_SIZE, CANVAS_SIZE) };
+export function createScratch(makeCanvas, scale = 1) {
+  const px = Math.round(CANVAS_SIZE * scale);
+  return { sil: makeCanvas(px, px) };
 }
 
 // canvas px (figure facing right) -> world offset from the fighter's feet origin

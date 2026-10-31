@@ -1072,3 +1072,17 @@ html, body {
   .bar-head { font-size: 15px; gap: 6px; }
   #enemy-kos { font-size: 12px; }
 }
+
+
+/* Meme-throw cooldown chip and the secret-move codex */
+#chip-meme { position: relative; opacity: 0.55; transition: opacity 0.2s ease; overflow: hidden; padding-bottom: 3px; }
+#chip-meme.ready { opacity: 1; }
+#chip-meme .chip-fill { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: #ffd23a; transform-origin: left; transform: scaleX(0); }
+.secret-list { display: flex; flex-direction: column; gap: 6px; }
+.secret { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; font-size: 12px; line-height: 1.45; color: #b9c8dc; }
+.secret b { color: #fff; letter-spacing: 1px; }
+.secret .code { color: #ffd23a; letter-spacing: 3px; font-weight: bold; }
+.secret.found { border-color: rgba(125,255,154,0.4); background: rgba(125,255,154,0.06); }
+.secret.found b { color: #7dff9a; }
+.secret.locked { color: #8498b2; font-style: italic; }
+#secret-count { margin-left: 8px; color: #ffd23a; }

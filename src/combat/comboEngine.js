@@ -1,5 +1,6 @@
 // Keyboard Warrior Stickman - Combat Mechanics, DMC Style Rank Engine & Power Forms
 import { FORM_LABELS, FORM_COLORS } from '../render/effects/effectsManager.js';
+import { SECRETS, loadFound, saveFound } from './secrets.js';
 
 const FORM_ORDER = ['base', 'ssj', 'blue', 'ui'];
 const SPECIAL_LABELS = {
@@ -67,6 +68,16 @@ export class ComboEngine {
     this.enemy = null;
     this.onMiss = null;
     this.onDashIn = null; // called when the hero dashes in from range (the bot may counter-poke)
+    this.onHabit = null; // told about jumps, launchers, dash-ins and strikes so the bot can learn them
+    this.onParry = null; // the bot riposte after a parry
+    this.dynamic = {}; // bonuses the bot has earned by reading your habits (reads / guard / poke)
+    this.parryReadyAt = 0;
+    this.memeReadyAt = 0; // your Shift meme-throw cooldown
+    this.secretsEnabled = true;
+    this.secretReadyAt = {};
+    this.foundSecrets = loadFound();
+    this.onSecretFound = null;
+    this.bulletTimer = 0; // seconds of "bullet time" left (the bot runs at quarter speed)
     this.memes = null; // meme reaction player, set by the app
     this.difficulty = null; // current bot level table, set by the fight director
     this.difficultyKey = 'medium';
@@ -92,7 +103,8 @@ export class ComboEngine {
 
   damageMultiplier() {
     // Holding guard trades offence for safety: you hit 40% softer
-    return (this.isRageMode ? 1.6 : 1) * (FORM_DAMAGE[this.form] || 1) * (this.hero && this.hero.guarding ? 0.6 : 1);
+    const dazed = this.enemy && this.enemy.dazedUntil > performance.now() ? 1.5 : 1; // "look behind you" opening
+    return (this.isRageMode ? 1.6 : 1) * (FORM_DAMAGE[this.form] || 1) * (this.hero && this.hero.guarding ? 0.6 : 1) * dazed;
   }
 
   sparkColor() {
@@ -106,6 +118,7 @@ export class ComboEngine {
     this.comboTimer = this.comboTimeout;
     this.lastActionAt = performance.now();
     this.missStreak = 0;
+    if (this.onHabit) this.onHabit('hit');
     if (this.memes && [10, 25, 50, 100, 200].includes(this.hits)) {
       this.memes.trigger(this.hits >= 50 ? 'hype' : 'praise', { priority: 2, side: 'right' });
     }
@@ -132,6 +145,14 @@ export class ComboEngine {
     const kind = finisher ? 'kick' : type;
     hero.attack(kind);
 
+    // A crescent trailing the fist or foot makes the strike read as a swing
+    const limb = hero.anchor(kind === 'kick' ? 'footF' : 'handF');
+    this.fx.swoosh(limb.x, limb.y, {
+      dir: hero.facing,
+      size: finisher ? 1.5 : kind === 'punch' || kind === 'heavy' ? 1.1 : 0.85,
+      color: this.sparkColor()
+    });
+
     // Hard bots sometimes sidestep a plain strike (specials and word bonuses always connect)
     if (this.difficulty && this.difficulty.dodge > 0 && !enemy.isAirborne && enemy.pose !== 'hurt' && Math.random() < this.difficulty.dodge) {
       const away = Math.sign(enemy.x - hero.x) || 1;
@@ -144,11 +165,27 @@ export class ComboEngine {
 
     const base = type === 'crit' ? 14 : type === 'heavy' ? 9 : 6;
 
+    // The bot's secret parry: against a long string of plain strikes it can deflect one and hit back
+    const smartLvl = this.difficulty && this.difficulty.smart;
+    const nowMs = performance.now();
+    if (smartLvl && smartLvl.parry > 0 && !finisher && type !== 'crit' && this.hits >= 5 && nowMs >= this.parryReadyAt && !enemy.isAirborne && Math.random() < smartLvl.parry) {
+      this.parryReadyAt = nowMs + 9000;
+      this.fx.ringBurst(enemy.x, 1.2, 3.2, 0x7dd3ff, 0.35);
+      this.fx.hitSpark(enemy.x - hero.facing * 0.2, enemy.y + 1.2, { size: 1.3, color: 0x7dd3ff, count: 10 });
+      this.fx.floatText('PARRIED!', hero.x, 2.7, { color: '#7dd3ff', size: 34, cls: 'fx-pop' });
+      this.audio.playCombatHit('crit');
+      this.arena.triggerScreenShake(0.35);
+      hero.takeHit(0, { knock: 0.8, stun: 0.55, quiet: true });
+      this.onHeroHit();
+      if (this.onParry) this.onParry();
+      return;
+    }
+
     // The bot throws up a guard against plain strikes (finishers break through). Smarter levels
     // guard more the longer your combo runs, so a flawless string gets harder to keep going.
     const lvl = this.difficulty;
     if (lvl && lvl.guardChance > 0 && !finisher && !enemy.isAirborne) {
-      const bonus = lvl.adaptive ? Math.min(0.22, this.hits * 0.012) : 0;
+      const bonus = (lvl.adaptive ? Math.min(0.22, this.hits * 0.012) : 0) + (this.dynamic.guard || 0);
       if (Math.random() < lvl.guardChance + bonus) {
         enemy.guardTimer = 0.35;
         enemy.takeHit(base * 0.2 * this.damageMultiplier(), { knock: 0.03, quiet: true, stagger: false });
@@ -171,7 +208,15 @@ export class ComboEngine {
       color: this.sparkColor(),
       count: finisher ? 12 : 7
     });
-    this.hitStop = Math.max(this.hitStop, finisher ? 0.06 : 0.03);
+    // Weight: bigger hits freeze longer, throw speed lines, shove the camera and add a low boom
+    const big = finisher || type === 'crit';
+    this.fx.impact(cx, cy, { size: big ? 1.5 : type === 'heavy' ? 1.1 : 0.8, color: this.sparkColor(), dir });
+    this.arena.kick(dir, finisher ? 0.34 : big || type === 'heavy' ? 0.2 : 0.08, finisher ? dir * 0.012 : 0);
+    if (big) {
+      this.audio.playImpactBoom(finisher ? 1.1 : 0.8);
+      this.fx.flash('#ffffff', 0.16, 0.08);
+    }
+    this.hitStop = Math.max(this.hitStop, finisher ? 0.09 : type === 'crit' ? 0.075 : type === 'heavy' ? 0.05 : 0.03);
     if (finisher) {
       this.arena.punchZoom(0.45);
       this.arena.triggerScreenShake(0.3);
@@ -241,7 +286,8 @@ export class ComboEngine {
 
     // Hard bots read the launcher coming and step out of it
     const lvl = this.difficulty;
-    if (lvl && lvl.readsLauncher > 0 && !enemy.isAirborne && enemy.pose !== 'hurt' && Math.random() < lvl.readsLauncher) {
+    if (this.onHabit) this.onHabit('launcher');
+    if (lvl && lvl.readsLauncher > 0 && !enemy.isAirborne && enemy.pose !== 'hurt' && Math.random() < lvl.readsLauncher + (this.dynamic.reads || 0)) {
       const away = Math.sign(enemy.x - hero.x) || 1;
       enemy.slideTo(Math.max(-6, Math.min(6, enemy.x + away * 1.9)), 34);
       this.fx.afterimage(enemy, '#ff9a9a', 0.3);
@@ -318,7 +364,10 @@ export class ComboEngine {
       if (this.memes) this.memes.trigger('slam', { priority: 2, chance: 0.8, side: 'right' });
       this.arena.triggerScreenShake(0.85);
       this.arena.punchZoom(0.8);
-      this.hitStop = Math.max(this.hitStop, 0.12);
+      this.arena.kick(0, 0, (Math.random() < 0.5 ? -1 : 1) * 0.05);
+      this.audio.playImpactBoom(1.4);
+      this.fx.impact(f.x, 0.8, { size: 2.2, color: color });
+      this.hitStop = Math.max(this.hitStop, 0.14);
       if (res.ko) this.onKO(f, this.hero);
       else if (!f.isAirborne) f.launchIntoAir(4.2); // bounce
     }
@@ -337,6 +386,7 @@ export class ComboEngine {
       const dist = Math.abs(enemy.x - hero.x);
       if (dist > 2.1) {
         dir = toward; // gap closer
+        if (this.onHabit) this.onHabit('dashIn');
         if (this.onDashIn) this.onDashIn();
       }
       else {
@@ -359,9 +409,125 @@ export class ComboEngine {
     if (label) this.fx.floatText(label, hero.x, 2.6, { color: '#9be8ff', size: 26, cls: 'fx-pop' });
   }
 
+  // ------------------------------------------------------------- the meme action (Shift)
+  // Hurl a meme card at the bot: a ranged attack on a five-second cooldown.
+  memeThrowFraction() {
+    return Math.max(0, Math.min(1, 1 - (this.memeReadyAt - performance.now()) / 5000));
+  }
+
+  throwMeme(hero, enemy) {
+    const now = performance.now();
+    if (!hero || !enemy || hero.health <= 0 || hero.lockTimer > 0 || enemy.health <= 0 || now < this.memeReadyAt) return false;
+    const clips = this.memes ? this.memes.clips.filter((c) => c.thumb) : [];
+    if (!clips.length) return false;
+    const clip = clips[Math.floor(Math.random() * clips.length)];
+    this.memeReadyAt = now + 5000;
+    this.lastActionAt = now;
+    hero.setPose('punch', 0.25, true);
+    this.audio.playSound('whoosh_light');
+    this.fx.floatText('MEME!', hero.x, 2.5, { color: '#ffe27a', size: 24, cls: 'fx-pop' });
+    this.fx.throwMeme({
+      fromX: hero.x + hero.facing * 0.5,
+      fromY: hero.y + 1.35,
+      dir: hero.facing,
+      url: `assets/memes/${clip.thumb}`,
+      target: enemy,
+      speed: 13,
+      onArrive: (t) => this.memeHits(t, hero)
+    });
+    return true;
+  }
+
+  memeHits(enemy, hero) {
+    if (enemy.health <= 0) return;
+    const lvl = this.difficulty;
+    if (lvl && lvl.dodge > 0 && Math.random() < lvl.dodge * 1.5) {
+      this.fx.floatText('TOO SLOW', enemy.x, enemy.y + 2.3, { color: '#ff9a9a', size: 24, cls: 'fx-pop' });
+      return;
+    }
+    const res = enemy.takeHit(8 * this.damageMultiplier(), { knock: 0.4, stun: 0.45 });
+    this.fx.hitSpark(enemy.x, enemy.y + 1.4, { size: 1.2, color: 0xffe27a, count: 9 });
+    this.fx.impact(enemy.x, enemy.y + 1.4, { size: 1, color: 0xffe27a, dir: hero.facing });
+    this.fx.floatText("MEME'D!", enemy.x, enemy.y + 2.4, { color: '#ffd23a', size: 30, cls: 'fx-pop' });
+    this.audio.playCombatHit('heavy');
+    this.hitStop = Math.max(this.hitStop, 0.05);
+    this.score += Math.round(200 * (lvl ? lvl.score : 1));
+    this.addStylePoints(10);
+    if (this.memes) this.memes.trigger('laugh', { priority: 2, side: 'right' });
+    if (res.ko) this.onKO(enemy, hero);
+  }
+
+  // ------------------------------------------------------------- secret moves
+  // Tapped in as an arrow-key code (see secrets.js). Each has its own cooldown and unlocks a codex entry.
+  triggerSecret(id, hero, enemy) {
+    const def = SECRETS.find((s) => s.id === id);
+    if (!def || !hero || hero.health <= 0) return false;
+    const now = performance.now();
+    if ((this.secretReadyAt[id] || 0) > now) {
+      this.fx.floatText('RECHARGING', hero.x, 2.6, { color: '#9aa8bc', size: 22, cls: 'fx-pop' });
+      return false;
+    }
+    this.secretReadyAt[id] = now + def.cooldown * 1000;
+    this.lastActionAt = now;
+
+    if (!this.foundSecrets.includes(id)) {
+      this.foundSecrets.push(id);
+      saveFound(this.foundSecrets);
+      this.fx.floatText(`SECRET MOVE ${this.foundSecrets.length}/${SECRETS.length}`, hero.x, 3.6, { color: '#7dff9a', size: 26, cls: 'fx-pop' });
+      if (this.onSecretFound) this.onSecretFound(id);
+    }
+    this.fx.floatText(def.name + '!', hero.x, 3.0, { color: '#ffd23a', size: 42, cls: 'fx-pop fx-big' });
+    this.audio.playSound('rank_up');
+    this.arena.triggerScreenShake(0.4);
+
+    if (id === 'konami') {
+      hero.health = hero.maxHealth;
+      hero.invulnTimer = Math.max(hero.invulnTimer, 2);
+      this.surgeForm = 'ui';
+      this.surgeTimer = 15;
+      if (this.form !== 'ui') this.setForm('ui', true);
+      else this.fx.powerUpBurst(hero, 'ui');
+      this.fx.flash('#ffd23a', 0.4, 0.5);
+    } else if (id === 'rain' && enemy && enemy.health > 0) {
+      const clips = this.memes ? this.memes.clips.filter((c) => c.thumb) : [];
+      const urls = [...clips].sort(() => Math.random() - 0.5).slice(0, 6).map((c) => `assets/memes/${c.thumb}`);
+      if (urls.length) {
+        this.fx.memeRain({
+          x: enemy.x,
+          urls,
+          count: 14,
+          span: 1.5,
+          onLand: (i) => {
+            if (enemy.health <= 0) return;
+            const res = enemy.takeHit(3.2 * this.damageMultiplier(), { knock: 0.05, stun: 0.12, quiet: i % 3 !== 0 });
+            this.audio.playCombatHit('light');
+            this.hits++;
+            this.comboTimer = this.comboTimeout;
+            if (res.ko) this.onKO(enemy, hero);
+          }
+        });
+      }
+      if (this.memes) this.memes.trigger('hype', { priority: 2, side: 'left' });
+    } else if (id === 'distract' && enemy && enemy.health > 0) {
+      enemy.dazedUntil = now + 2600;
+      enemy.setPose('windup', 2.6, true);
+      enemy.lock(2.6);
+      this.fx.floatText('?!', enemy.x, enemy.y + 2.5, { color: '#ffffff', size: 54, cls: 'fx-pop fx-big' });
+      if (this.memes) this.memes.trigger('laugh', { priority: 3, side: 'right' });
+    } else if (id === 'bullet') {
+      this.bulletTimer = 3.5;
+      this.fx.flash('#3aa0ff', 0.28, 0.5);
+      this.arena.punchZoom(0.5);
+      this.audio.playSound('whoosh_heavy');
+    }
+    return true;
+  }
+
   triggerJump(hero) {
     if (!hero || hero.lockTimer > 0 || hero.health <= 0 || hero.isAirborne || hero.hover) return;
     hero.jump(8.4);
+    hero.selfJump = true; // a jump you chose (a launch from a hit doesn't count)
+    if (this.onHabit) this.onHabit('jump');
     this.audio.playSpecialKey('tab');
     this.fx.dust(hero.x, 4);
     this.lastActionAt = performance.now();
@@ -408,6 +574,8 @@ export class ComboEngine {
     this.score += Math.round(1000 * (this.difficulty ? this.difficulty.score : 1));
     this.slowTimer = 0.4;
     this.audio.playSound('knockdown');
+    this.audio.playImpactBoom(1.3);
+    this.fx.impact(enemy.x, 1.2, { size: 2.4, color: 0xff5560 });
     this.arena.triggerScreenShake(0.8);
     this.arena.punchZoom(0.9);
     this.fx.flash('#ffffff', 0.5, 0.4);
@@ -708,6 +876,7 @@ export class ComboEngine {
       if (this.rageTimer <= 0) this.isRageMode = false;
     }
     if (this.surgeTimer > 0) this.surgeTimer -= delta;
+    if (this.bulletTimer > 0) this.bulletTimer -= delta;
 
     for (let i = this.scheduled.length - 1; i >= 0; i--) {
       this.scheduled[i].t -= delta;

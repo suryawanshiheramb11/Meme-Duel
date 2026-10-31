@@ -2,6 +2,10 @@
 //
 // Every printable character belongs to the typing prompt. Walking uses the arrow keys only:
 // binding WASD would swallow A and D, which made those letters impossible to type.
+import { matchSecret } from '../combat/secrets.js';
+
+const ARROW_LETTER = { ArrowUp: 'U', ArrowDown: 'D', ArrowLeft: 'L', ArrowRight: 'R' };
+
 export class InputManager {
   constructor(promptManager, comboEngine, audioSystem, retroHud, memeMenu, hero, enemy) {
     this.prompt = promptManager;
@@ -12,6 +16,7 @@ export class InputManager {
     this.hero = hero;
     this.enemy = enemy;
     this.blockers = [memeMenu]; // anything with .isOpen (menu, mode picker) that should capture the keyboard
+    this.arrowBuffer = []; // recent arrow presses, for the secret-move codes
 
     // Held key state for continuous movement
     this.keysHeld = {
@@ -46,6 +51,15 @@ export class InputManager {
     }
 
     const key = e.key;
+
+    // Secret-move codes are tapped on the arrow keys (held-down repeats don't count)
+    if (ARROW_LETTER[e.code] && !e.repeat) this.recordArrow(e.code);
+
+    // Shift is the meme action: throw a meme card at the bot. (Capital letters still type normally.)
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+      if (!e.repeat) this.combo.throwMeme(this.hero, this.enemy);
+      return;
+    }
 
     // Movement: arrow keys only
     if (e.code === 'ArrowLeft') {
@@ -124,6 +138,19 @@ export class InputManager {
         this.combo.registerMiss();
         this.hud.flashError();
       }
+    }
+  }
+
+  recordArrow(code) {
+    const now = performance.now();
+    this.arrowBuffer = this.arrowBuffer.filter((a) => now - a.t < 2200);
+    this.arrowBuffer.push({ c: ARROW_LETTER[code], t: now });
+    if (this.arrowBuffer.length > 10) this.arrowBuffer.shift();
+    if (!this.combo.secretsEnabled) return;
+    const hit = matchSecret(this.arrowBuffer.map((a) => a.c).join(''));
+    if (hit) {
+      this.arrowBuffer = [];
+      this.combo.triggerSecret(hit.id, this.hero, this.enemy);
     }
   }
 

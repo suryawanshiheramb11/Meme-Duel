@@ -34,6 +34,8 @@ export class ArenaManager {
     this.shakeIntensity = 0;
     this.shakeDecay = 5.0;
     this.zoomKick = 0;
+    this.kickX = 0; // sideways recoil of the camera, in world units
+    this.roll = 0; // camera roll in radians (slams tilt the world briefly)
     this.focusX = 0;
     this.camX = 0;
     this.camDist = 8.2;
@@ -149,6 +151,12 @@ export class ArenaManager {
     this.shakeIntensity = Math.min(1.2, this.shakeIntensity + intensity);
   }
 
+  // Shove the camera in the direction a hit travelled, optionally tilting it
+  kick(dirX = 0, amount = 0.2, roll = 0) {
+    this.kickX = Math.max(-0.7, Math.min(0.7, this.kickX + dirX * amount));
+    this.roll = Math.max(-0.08, Math.min(0.08, this.roll + roll));
+  }
+
   punchZoom(amount = 0.5) {
     this.zoomKick = Math.min(1.5, this.zoomKick + amount);
   }
@@ -172,9 +180,12 @@ export class ArenaManager {
       oz = (Math.random() - 0.5) * this.shakeIntensity * 0.2;
       this.shakeIntensity = Math.max(0, this.shakeIntensity - this.shakeDecay * delta);
     }
-    const cx = this.camX + ox;
+    this.kickX *= Math.exp(-delta * 9);
+    this.roll *= Math.exp(-delta * 7);
+    const cx = this.camX + ox + this.kickX;
     const cy = this.camY + oy;
     this.camera.position.set(cx, cy, dist + oz);
+    this.camera.up.set(Math.sin(this.roll), Math.cos(this.roll), 0);
     this.camera.lookAt(cx, cy, 0);
 
     this.bgMesh.position.x = this.camX * 0.85;

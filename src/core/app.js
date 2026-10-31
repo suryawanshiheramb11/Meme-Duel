@@ -54,6 +54,7 @@ export class App {
     this.hero.x = -0.55;
     this.enemy.x = 0.5;
     this.fx.attachAura(this.hero);
+    this.fx.attachAura(this.enemy); // lights up when the bot reaches its final form
     this.perf = new PerfMonitor({ arena: this.arena, fx: this.fx, fighters: [this.hero, this.enemy] });
 
     // 4. Combat, style rank & power forms
@@ -119,6 +120,7 @@ export class App {
 
     // 8. Meme Combo Maker menu
     this.menu = new MemeComboMenu(this.container, this.arena, this.prompt, this.audio, this.combo, this.memes, this.director, this.perf);
+    this.combo.onSecretFound = () => this.menu.renderSecrets();
 
     // 9. Input
     this.input = new InputManager(
@@ -186,9 +188,11 @@ export class App {
     this.combo.update(dt);
     this.prompt.update(dt);
 
+    // Bullet time (a secret move): the bot runs at quarter speed while you act at full speed
+    const foeDt = this.combo.bulletTimer > 0 ? simDt * 0.22 : simDt;
     this.hero.update(simDt);
-    this.enemy.update(simDt);
-    this.director.update(simDt);
+    this.enemy.update(foeDt);
+    this.director.update(foeDt);
 
     // Left alone for a while: a "waiting..." style meme
     const nowMs = performance.now();
