@@ -42,7 +42,7 @@ Node 18 or newer is enough to serve it. The game is plain static files: there is
 | Command | What it does |
 | :--- | :--- |
 | `npm run serve` | Serves the game on port 3000. `PORT=4000 npm run serve` changes the port; `ROOT=web-dist npm run serve` previews the hosted build. |
-| `npm test` | Runs the full check suite (169 checks). See [Tests](#tests). |
+| `npm test` | Runs the full check suite (172 checks). See [Tests](#tests). |
 | `npm run build:web` | Builds the slim copy that gets hosted into `web-dist/`. See [Hosting](#hosting-on-vercel). |
 | `npm run fetch:memes` | Downloads, crops, compresses and tags the meme clips. Needs `ffmpeg`. See [Customising](#customising-the-game). |
 | `npm run generate:arenas` | Repaints the nine arena backgrounds. See [Customising](#customising-the-game). |
@@ -409,7 +409,7 @@ test/
 
 ## Tests
 
-`npm test` runs 169 checks in a few seconds (it also rebuilds `web-dist/`). They cover:
+`npm test` runs 172 checks in a few seconds (it also rebuilds `web-dist/`). They cover:
 
 - required files, the arena images (all 1920×1080) and audio assets;
 - prompt logic: typing, accuracy, word and sentence events, queue order;
