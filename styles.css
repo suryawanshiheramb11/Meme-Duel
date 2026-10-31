@@ -53,7 +53,7 @@ html, body {
    ========================================================================== */
 #floating-prompt-container {
   position: absolute;
-  top: 78px;
+  top: 104px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
@@ -64,10 +64,10 @@ html, body {
 #floating-prompt-paper {
   background: #ffffff;
   background-image: 
-    linear-gradient(90deg, transparent 50px, #ffccd5 50px, #ffccd5 52px, transparent 52px),
+    linear-gradient(90deg, transparent 60px, #ffccd5 60px, #ffccd5 62px, transparent 62px),
     linear-gradient(#e1edf7 1px, transparent 1px);
-  background-size: 100% 100%, 100% 28px;
-  padding: 12px 28px 12px 58px;
+  background-size: 100% 100%, 100% 36px;
+  padding: 16px 34px 16px 70px;
   border-radius: 4px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 2px 4px rgba(0,0,0,0.4);
   border: 1px solid #d8d8d8;
@@ -89,9 +89,10 @@ html, body {
 
 #prompt-text-display {
   font-family: var(--font-mono);
-  font-size: clamp(16px, 2.4vw, 32px);
+  font-size: clamp(26px, 3.4vw, 50px);
   font-weight: 900;
-  letter-spacing: 3px;
+  letter-spacing: 4px;
+  line-height: 1.25;
   color: #1a1e28;
   display: flex;
   flex-wrap: wrap;
@@ -377,11 +378,11 @@ html, body {
   top: 14px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(720px, calc(100vw - 280px));
-  min-width: 360px;
+  width: min(800px, calc(100vw - 420px));
+  min-width: 420px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   z-index: 24;
   pointer-events: none;
 }
@@ -420,11 +421,18 @@ html, body {
 @keyframes hp-pulse { to { filter: brightness(1.5); } }
 
 #vs-badge {
+  flex: 0 0 84px;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
+  margin-bottom: -15px; /* centres the clock on the health bars */
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 30px;
+  line-height: 1;
   color: #ffd23a;
-  text-shadow: 0 0 12px rgba(255, 210, 58, 0.7), 0 2px 4px #000;
-  padding-top: 8px;
+  text-shadow: 0 2px 0 #000, 0 0 10px rgba(0, 0, 0, 0.8);
 }
 
 #form-chip {
@@ -812,3 +820,19 @@ html, body {
 .pm-foot .menu-btn .mb-label { color: var(--paper); }
 .pm-foot .menu-btn .mb-key { background: var(--gold); color: var(--ink); }
 .pm-foot .menu-btn::after { background: var(--gold); }
+
+
+/* Fight bars: mirrored heads, evenly spaced */
+.bar-head { gap: 10px; min-height: 28px; }
+.hero-side .pips { margin-left: auto; }
+.enemy-side .bar-head { flex-direction: row-reverse; }
+.enemy-side .bar-name { order: 1; }
+.enemy-side #enemy-kos { order: 2; }
+.enemy-side .pips { order: 3; margin-right: auto; }
+.bar-side { padding-top: 0; }
+.pips { margin: 0; }
+.hp-track { height: 18px; }
+.bar-head > * { white-space: nowrap; }
+.bar-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 18px; }
+#enemy-kos { font-size: 14px; }
+#floating-prompt-container { top: 124px; }

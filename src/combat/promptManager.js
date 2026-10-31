@@ -49,6 +49,7 @@ export class PromptManager {
   // changing shape: flurry, slam, power surge, beam, time skip, then round again. Within each move
   // the memes are shuffled. When a move runs out the ladder simply skips it.
   setQueue(items) {
+    this.sourceItems = items;
     const LADDER = ['flurry', 'slam', 'powerup', 'beam', 'timeskip'];
     const buckets = {};
     [...items]
@@ -68,6 +69,19 @@ export class PromptManager {
     this.queue = ordered;
     this.queuePos = 0;
     if (this.queue.length) this.loadItem(this.queue[0]);
+  }
+
+  // A fresh round: new shuffle of the meme queue, the half-typed phrase cleared, stats back to zero
+  resetRound() {
+    if (this.sourceItems && this.sourceItems.length) this.setQueue(this.sourceItems);
+    else {
+      this.promptIndex = 0;
+      this.currentItem = null;
+      this.currentText = this.defaultPrompts[0];
+    }
+    this.charIndex = 0;
+    this.completed = 0;
+    this.reset();
   }
 
   hasQueue() {

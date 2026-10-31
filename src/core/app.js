@@ -158,6 +158,13 @@ export class App {
       memes: this.memes
     });
     this.input.blockers.push(this.match);
+    // Every round starts with a clean slate: new meme queue, nothing half-typed, stats at zero
+    this.match.onRoundReset = () => {
+      this.prompt.resetRound();
+      this.hud.updatePrompt(this.prompt);
+      prefetchUpcoming();
+      this.combo.missStreak = 0;
+    };
 
     // Start screen: choose Easy / Medium / Hard. The bot stays put until you do.
     this.modeSelect = new ModeSelect(this.container, this.director.diffKey, (level) => {

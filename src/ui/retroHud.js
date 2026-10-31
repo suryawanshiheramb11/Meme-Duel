@@ -135,14 +135,15 @@ export class RetroHud {
     if (nameKey !== this.lastEnemyNumber) {
       this.lastEnemyNumber = nameKey;
       const tag = director.diff.personalityLabel ? ` \u00b7 ${director.diff.personalityLabel}` : '';
-      this.enemyName.textContent = `FOE #${director.enemyNumber} \u00b7 ${director.diff.label}${tag}`;
+      this.enemyName.textContent = `FOE #${director.enemyNumber} \u00b7 ${director.diff.label}`;
+      this.enemyName.title = `${director.diff.name}${tag}`;
       this.enemyName.dataset.level = director.diffKey;
     }
     // meme-throw cooldown
     const ready = combo.memeThrowFraction();
     this.memeChip.classList.toggle('ready', ready >= 1);
     this.memeChipFill.style.transform = `scaleX(${ready})`;
-    this.enemyKos.textContent = `KO ${combo.kills}`;
+    if (!director.versus) this.enemyKos.textContent = `KO ${combo.kills}`;
   }
 
   updatePrompt(promptManager) {

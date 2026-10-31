@@ -151,6 +151,7 @@ export class Match {
     this.clock = ROUND_SECONDS;
     this.director.paused = true;
     this.director.resetRound();
+    if (this.onRoundReset) this.onRoundReset(n);
     this.over.hidden = true;
     const last = this.scores.me === ROUNDS_TO_WIN - 1 && this.scores.foe === ROUNDS_TO_WIN - 1;
     this.bars.className = 'on';
