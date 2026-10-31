@@ -62,6 +62,12 @@ export class App {
 
     // Meme reaction popups (KO laughs, typo apologies, power-up hype, ...)
     this.memes = new MemeReactions(this.container, this.audio);
+    // Memes float over the head of whoever they're about and follow them around
+    this.memes.bindStage({
+      project: (x, y) => this.arena.worldToScreen(x, y),
+      hero: this.hero,
+      enemy: this.enemy
+    });
     this.combo.memes = this.memes;
     this.lastIdleMeme = performance.now();
     this.introShown = false;
@@ -131,7 +137,7 @@ export class App {
       this.director.paused = false;
       this.combo.lastActionAt = performance.now();
     });
-    this.input.blockers.push(this.modeSelect, this.memes); // a meme cutscene also swallows keys
+    this.input.blockers.push(this.modeSelect); // only the menu and the mode picker capture the keyboard; memes never do
 
     // Start background music on first user interaction (browsers block autoplay)
     const startAudioOnce = () => {
@@ -143,7 +149,7 @@ export class App {
       setTimeout(() => {
         if (!this.introShown) {
           this.introShown = true;
-          this.memes.trigger('intro', { priority: 2, side: 'right', force: true, noFreeze: true });
+          this.memes.trigger('intro', { priority: 2, side: 'left', force: true });
         }
       }, 500);
       window.removeEventListener('keydown', startAudioOnce);
@@ -162,16 +168,6 @@ export class App {
     const delta = Math.min((now - this.lastTime) / 1000, 0.05);
     this.lastTime = now;
 
-    // A meme cutscene stops the whole fight: nothing simulates, only the frozen frame is drawn
-    if (this.memes.frozen) {
-      this.wasFrozen = true;
-      this.arena.render();
-      return;
-    }
-    if (this.wasFrozen) {
-      this.wasFrozen = false;
-      this.combo.lastActionAt = now; // the pause shouldn't count as idling
-    }
 
     // Slow motion on KOs and perfect dodges; impact freeze on hits.
     let dt = delta;
@@ -203,6 +199,7 @@ export class App {
 
     this.fx.update(dt, this.arena.camX);
     this.arena.update(delta);
+    this.memes.updateAnchor(); // keep the meme overlay riding above its fighter
 
     this.hud.updateMetrics(this.prompt, this.combo);
     this.hud.updateBars(this.hero, this.enemy, this.combo, this.director);

@@ -794,39 +794,66 @@ html, body {
 
 
 /* ==========================================================================
-   Meme reaction popup (TV frame)
+   Meme overlay: floats over the head of the fighter it's about (positioned by JS)
    ========================================================================== */
 #meme-tv {
   position: fixed;
-  bottom: 86px;
-  z-index: 30;
+  left: 50%;
+  top: 40%;
+  z-index: 18; /* above the fight, below every HUD element so typing stays readable */
   pointer-events: none;
   opacity: 0;
-  transform: scale(0.4) rotate(-6deg);
-  transition: opacity 0.12s ease, transform 0.28s cubic-bezier(0.2, 1.5, 0.4, 1);
+  transform: translate(-50%, -100%);
+  transition: opacity 0.12s ease;
+  --meme-h: 160px;
+  --tail: 50%;
 }
-#meme-tv.side-right { right: 18px; transform-origin: bottom right; }
-#meme-tv.side-left { left: 18px; transform-origin: bottom left; }
-#meme-tv.show { opacity: 1; transform: scale(1) rotate(-1.5deg); }
-#meme-tv.show.side-left { transform: scale(1) rotate(1.5deg); }
+#meme-tv.show { opacity: 1; }
 
 .meme-tv-frame {
   position: relative;
-  border: 5px solid #0d0f14;
+  border: 4px solid #0d0f14;
   border-radius: 12px;
   background: #000;
   overflow: hidden;
-  box-shadow: 0 0 0 2px #cfd6e4, 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 22px rgba(0, 240, 255, 0.35);
+  transform-origin: var(--tail) 100%;
+  transform: scale(0.35) rotate(-4deg);
+  transition: transform 0.28s cubic-bezier(0.2, 1.5, 0.4, 1);
+  box-shadow: 0 0 0 2px #cfd6e4, 0 12px 28px rgba(0, 0, 0, 0.65), 0 0 20px rgba(0, 240, 255, 0.3);
 }
-#meme-tv.prio-2 .meme-tv-frame { box-shadow: 0 0 0 2px #ffd23a, 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 26px rgba(255, 210, 58, 0.55); }
-#meme-tv.prio-3 .meme-tv-frame { box-shadow: 0 0 0 2px #ff4455, 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 68, 85, 0.65); }
+#meme-tv.show .meme-tv-frame { transform: scale(1) rotate(0deg); }
+#meme-tv.prio-2 .meme-tv-frame { box-shadow: 0 0 0 2px #ffd23a, 0 12px 28px rgba(0, 0, 0, 0.65), 0 0 24px rgba(255, 210, 58, 0.5); }
+#meme-tv.prio-3 .meme-tv-frame { box-shadow: 0 0 0 2px #ff4455, 0 12px 28px rgba(0, 0, 0, 0.65), 0 0 28px rgba(255, 68, 85, 0.6); }
+#meme-tv.phrase .meme-tv-frame { border-width: 5px; }
 
+/* speech-bubble pointer aimed at the fighter's head */
+#meme-tv::after {
+  content: '';
+  position: absolute;
+  left: var(--tail);
+  bottom: -12px;
+  width: 0;
+  height: 0;
+  border: 10px solid transparent;
+  border-top-color: #cfd6e4;
+  border-bottom: 0;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease 0.1s;
+}
+#meme-tv.show::after { opacity: 1; }
+#meme-tv.prio-2::after { border-top-color: #ffd23a; }
+#meme-tv.prio-3::after { border-top-color: #ff4455; }
+
+/* clip size comes from JS: a share of the screen, bigger for bigger moments */
 #meme-video {
   display: block;
-  max-height: 30vh;
-  max-width: min(38vw, 380px);
-  min-width: 140px;
+  height: var(--meme-h);
+  width: auto;
+  max-width: min(40vw, 480px);
+  min-width: 60px;
   background: #000;
+  object-fit: contain;
 }
 
 .meme-tv-scan {
@@ -838,23 +865,19 @@ html, body {
 
 .meme-tv-badge {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 5px;
+  left: 5px;
+  max-width: calc(100% - 10px);
   padding: 1px 7px;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: clamp(11px, calc(var(--meme-h) * 0.1), 20px);
   letter-spacing: 2px;
+  line-height: 1.25;
   color: #fff;
   background: rgba(220, 30, 60, 0.9);
   border-radius: 3px;
   text-shadow: 0 1px 2px #000;
 }
-
-@media (max-width: 760px) {
-  #meme-tv { bottom: 70px; }
-  #meme-video { max-width: 52vw; max-height: 30vh; }
-}
-
 
 /* Attack guide in the menu */
 .attack-guide { display: flex; flex-direction: column; gap: 8px; }
@@ -1043,50 +1066,9 @@ html, body {
 .diff-btn.active[data-level="easy"] { border-color: #5dff9a; }
 .diff-btn.active[data-level="hard"] { border-color: #ff4a5a; }
 
-
-/* ==========================================================================
-   Meme cutscene: the game stops, the clip takes centre stage
-   ========================================================================== */
-#meme-dim {
-  position: fixed;
-  inset: 0;
-  z-index: 29;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.82));
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s ease;
+/* keep the fight-bar labels on one line, including on phones */
+.bar-head { white-space: nowrap; }
+@media (max-width: 760px) {
+  .bar-head { font-size: 15px; gap: 6px; }
+  #enemy-kos { font-size: 12px; }
 }
-body.meme-frozen #meme-dim { opacity: 1; pointer-events: auto; cursor: pointer; }
-
-#meme-tv.cutscene {
-  left: 50%;
-  right: auto;
-  top: 50%;
-  bottom: auto;
-  transform-origin: center;
-  transform: translate(-50%, -50%) scale(0.55);
-}
-#meme-tv.cutscene.show { transform: translate(-50%, -50%) scale(1); }
-#meme-tv.cutscene .meme-tv-frame { border-width: 7px; border-radius: 16px; }
-#meme-tv.cutscene #meme-video { height: min(58vh, 560px); width: auto; max-width: 90vw; max-height: none; min-width: 0; object-fit: contain; }
-#meme-tv.cutscene .meme-tv-badge { font-size: 22px; top: 12px; left: 12px; padding: 3px 12px; }
-
-.meme-tv-skip {
-  display: none;
-  position: absolute;
-  right: 10px;
-  bottom: 8px;
-  padding: 2px 8px;
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: #dfe8f6;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
-}
-#meme-tv.cutscene .meme-tv-skip { display: block; }
-
-/* Everything on the HUD holds still too while the fight is stopped */
-body.meme-frozen .fx-text,
-body.meme-frozen .red-cursor-box,
-body.meme-frozen #combo-counter-text,
-body.meme-frozen #rank-badge-letter { animation-play-state: paused; }

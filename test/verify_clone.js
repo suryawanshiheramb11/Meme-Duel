@@ -1,5 +1,5 @@
 // ============================================================================
-// KEYBOARD WARRIOR STICKMAN — AUTHENTIC 1:1 CLONE VERIFICATION TEST
+// MEME DUEL — VERIFICATION SUITE
 // ============================================================================
 
 const fs = require('fs');
@@ -20,7 +20,7 @@ function assert(condition, message) {
 }
 
 console.log('====================================================');
-console.log('KEYBOARD WARRIOR STICKMAN: 1:1 CLONE VERIFICATION');
+console.log('MEME DUEL: VERIFICATION SUITE');
 console.log('====================================================\n');
 
 // 1. Core Architecture & Modules
@@ -347,11 +347,19 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
 
   const memeSrc = fs.readFileSync(path.join(ROOT, 'src/ui/memeReactions.js'), 'utf8');
   const appSrc = fs.readFileSync(path.join(ROOT, 'src/core/app.js'), 'utf8');
-  assert(/get isOpen\(\)/.test(memeSrc) && /skip\(\)/.test(memeSrc) && /onEnd/.test(memeSrc), 'Meme player can freeze, be skipped, and run a callback when done');
-  assert(/this\.memes\.frozen/.test(appSrc) && /return;/.test(appSrc.slice(appSrc.indexOf('this.memes.frozen'))), 'Game loop stops simulating while a meme cutscene plays');
-  assert(/blockers\.push\([^)]*this\.memes/.test(appSrc), 'Keyboard is ignored during a meme cutscene');
-  assert(/onEnd: perform/.test(comboSrc2), 'A phrase\'s special move waits for its meme cutscene to finish');
-  assert(/noFreeze: true/.test(appSrc), 'The startup intro does not freeze the game');
+  // Memes are overlays: they never stop the fight, block typing, or delay a special move.
+  assert(!/frozen|freezeMode|cutscene|onEnd/.test(memeSrc), 'Meme player has no freeze or cutscene logic (memes never stop the game)');
+  assert(!/memes\.frozen|wasFrozen|meme-frozen/.test(appSrc), 'Game loop never pauses for a meme');
+  assert(!/blockers\.push\([^)]*this\.memes/.test(appSrc), 'Typing is never blocked while a meme plays (only the menu and mode picker capture keys)');
+  assert(/this\.memes\.playClip\([^)]*\)[\s\S]{0,120}perform\(\);/.test(comboSrc2) && !/onEnd: perform/.test(comboSrc2), 'A finished phrase plays its meme and fires its special move at the same time');
+  assert(/updateAnchor\(\)/.test(appSrc) && /bindStage\(/.test(appSrc) && /worldToScreen/.test(fs.readFileSync(path.join(ROOT, 'src/render/arenas/arenaManager.js'), 'utf8')), 'Memes are anchored over the fighters\' heads and follow them every frame');
+  assert(/anchor\('head'\)/.test(memeSrc) && /HUD_TOP_PX/.test(memeSrc), 'Overlay sits above the head and stays clear of the typing prompt');
+  assert(/side: 'left'[^\n]*\}\);\s*\n\s*else this\.memes\.trigger|playClip\(item\.clip, \{ side: 'left'/.test(comboSrc2), 'A typed phrase\'s meme floats over the hero');
+  assert(/clipHeight\(/.test(memeSrc) && /window\.innerHeight/.test(memeSrc) && /window\.innerWidth/.test(memeSrc) && /SIZE\s*=\s*\{[^}]*phrase/.test(memeSrc), 'Overlay size is relative to the screen and the moment (phrase > big > notable > ambient)');
+  // The size scale really is graded and bounded
+  const sizeBlock = memeSrc.match(/const SIZE = (\{[^}]+\});/);
+  const SIZES = sizeBlock ? new Function(`return ${sizeBlock[1]}`)() : {};
+  assert(SIZES[1] < SIZES[2] && SIZES[2] < SIZES[3] && SIZES[3] < SIZES.phrase, 'Meme sizes grow with the moment: ambient < notable < big < typed phrase');
 
   // Every typeable meme has an explicit, meaning-based move, and the queue is a sorted ladder.
   const fetchSrc = fs.readFileSync(path.join(ROOT, 'scripts/fetch_memes.js'), 'utf8');
@@ -376,7 +384,7 @@ console.log('====================================================\n');
 if (failed > 0) {
   process.exit(1);
 } else {
-  console.log('>>> ALL 1:1 CLONE VERIFICATION TESTS PASSED SUCCESSFULLY! <<<\n');
+  console.log('>>> ALL MEME DUEL CHECKS PASSED! <<<\n');
   process.exit(0);
 }
 })();

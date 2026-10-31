@@ -1,8 +1,13 @@
 // Meme Duel - meme reaction player.
-// Pops a TV-style meme clip (with sound) over the fight when something fitting happens:
-// a KO gets laughter, a typo gets "I am sorry", a power-up gets a hype clip, and so on.
-// Clips and their situation tags come from assets/memes/manifest.json
-// (built by `npm run fetch:memes`). If the manifest is missing the game just runs without memes.
+//
+// Memes never stop the fight. Typing, strikes and special moves carry on while a clip plays as
+// an overlay floating above the head of whoever it's about: the hero for things you do or that
+// happen to you, the bot for things it does. The overlay follows that fighter around, and its
+// size is relative to the screen and to how big the moment is (a typed phrase's own meme is the
+// largest, a passing reaction the smallest).
+//
+// Clips and their situation tags come from assets/memes/manifest.json (built by
+// `npm run fetch:memes`). If the manifest is missing the game just runs without memes.
 
 // minimum gap between popups, and a multiplier on every trigger's chance, per frequency setting
 const FREQUENCY = {
@@ -13,8 +18,12 @@ const FREQUENCY = {
 };
 const STORAGE_KEY = 'memeDuel.memes';
 
-// How long a reaction (not a typed phrase's own meme) may hold the game frozen
-const REACTION_FREEZE_SECONDS = 3.5;
+// Clip height as a fraction of the reference screen size, by how big the moment is.
+// A typed phrase's own meme gets "phrase"; reactions use their priority (1 ambient ... 3 big).
+const SIZE = { 1: 0.12, 2: 0.16, 3: 0.2, phrase: 0.26 };
+const MIN_CLIP_PX = 70;
+const MAX_CLIP_PX = 270;
+const HUD_TOP_PX = 124; // keep clear of the typing prompt and fight bars at the top
 
 // Caption stamped on the popup so the joke lands even before the clip's audio does
 const CAPTIONS = {
@@ -51,22 +60,20 @@ export class MemeReactions {
     this.audio = audioSystem;
     const saved = loadSettings();
     this.frequency = FREQUENCY[saved.frequency] ? saved.frequency : 'normal';
-    // 'all': every meme is a cutscene that stops the game. 'big': only phrase memes and big
-    // moments. 'off': memes are just a corner popup and the fight carries on.
-    this.freezeMode = ['all', 'big', 'off'].includes(saved.freeze) ? saved.freeze : 'all';
-    this.frozen = false;
     this.volume = typeof saved.volume === 'number' ? saved.volume : 0.8;
 
     this.clips = [];
     this.pools = {};
     this.bags = {};
     this.recent = [];
-    this.current = null; // { priority, timer }
+    this.current = null; // { priority, side, startedAt, timer }
     this.lastEnd = 0;
     this.musicBase = null; // the real music volume, held while clips duck it
     this.restoreTimer = null;
     this.prefetched = new Set();
     this.playId = 0; // identifies the current play attempt so a stale failure can't mute a newer clip
+    this.stage = { project: null, hero: null, enemy: null };
+    this.pos = { x: 0, y: 0 };
     this.stats = { played: 0, skipped: 0 };
 
     this.buildDom(container);
@@ -81,32 +88,18 @@ export class MemeReactions {
         <video id="meme-video" playsinline preload="auto"></video>
         <div class="meme-tv-scan"></div>
         <span class="meme-tv-badge">MEME</span>
-        <span class="meme-tv-skip">SPACE or click to skip</span>
       </div>`;
     container.appendChild(this.root);
-
-    // Dims the frozen fight behind a cutscene; clicking it skips
-    this.dim = document.createElement('div');
-    this.dim.id = 'meme-dim';
-    this.dim.addEventListener('click', () => this.skip());
-    container.appendChild(this.dim);
-
-    // Capture phase so skipping never leaks a keystroke into the typing game or the menu
-    window.addEventListener(
-      'keydown',
-      (e) => {
-        if (this.frozen && ['Space', 'Enter', 'Escape'].includes(e.code)) {
-          e.preventDefault();
-          e.stopPropagation();
-          this.skip();
-        }
-      },
-      true
-    );
     this.video = this.root.querySelector('video');
     this.badge = this.root.querySelector('.meme-tv-badge');
     this.video.addEventListener('ended', () => this.finish());
     this.video.addEventListener('error', () => this.finish());
+  }
+
+  // Tell the player where the fighters are on screen so the overlay can float over their heads.
+  // project(worldX, worldY) -> { x, y } in screen pixels.
+  bindStage({ project, hero, enemy }) {
+    this.stage = { project, hero, enemy };
   }
 
   async loadManifest() {
@@ -133,28 +126,6 @@ export class MemeReactions {
     return this.clips.length > 0;
   }
 
-  // Lets the input manager treat a running cutscene like an open menu (keys are ignored)
-  get isOpen() {
-    return this.frozen;
-  }
-
-  skip() {
-    if (this.frozen) this.finish();
-  }
-
-  setFreezeMode(mode) {
-    if (!['all', 'big', 'off'].includes(mode)) return;
-    this.freezeMode = mode;
-    this.save();
-  }
-
-  // Should a reaction of this kind stop the game?
-  wantsFreeze(tag, priority) {
-    if (this.freezeMode === 'off') return false;
-    if (this.freezeMode === 'big') return priority >= 3;
-    return tag !== 'idle'; // nothing is happening while idle, so a freeze would add nothing
-  }
-
   setFrequency(level) {
     if (!FREQUENCY[level]) return;
     this.frequency = level;
@@ -170,10 +141,7 @@ export class MemeReactions {
 
   save() {
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ frequency: this.frequency, volume: this.volume, freeze: this.freezeMode })
-      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ frequency: this.frequency, volume: this.volume }));
     } catch (e) {
       /* private mode: settings just don't persist */
     }
@@ -184,11 +152,11 @@ export class MemeReactions {
    * tag      situation (ko, laugh, typo, hurt, powerup, slam, beam, hype, praise, idle, enter, timeskip, ...)
    * priority 1 ambient, 2 notable, 3 big moment (can interrupt a lower-priority clip)
    * chance   0-1 probability this trigger fires at all (scaled by the frequency setting)
-   * side     'left' for things happening to the hero, 'right' for the enemy
+   * side     'left' floats over the hero (things you do or that happen to you),
+   *          'right' over the bot (things it does)
    * force    skip chance and cooldown (previews, intro)
-   * noFreeze keep it a corner popup even when memes normally stop the game
    */
-  trigger(tag, { priority = 1, chance = 1, side = 'right', force = false, noFreeze = false } = {}) {
+  trigger(tag, { priority = 1, chance = 1, side = 'right', force = false } = {}) {
     if (!this.ready || (this.frequency === 'off' && !force)) return false;
     const now = performance.now();
     const freq = FREQUENCY[this.frequency];
@@ -217,13 +185,7 @@ export class MemeReactions {
 
     const clip = this.pick(tag);
     if (!clip) return false;
-    this.play(clip, {
-      priority,
-      side,
-      tag,
-      cutscene: !noFreeze && this.wantsFreeze(tag, priority),
-      maxSeconds: REACTION_FREEZE_SECONDS
-    });
+    this.play(clip, { priority, side, tag });
     return true;
   }
 
@@ -250,12 +212,12 @@ export class MemeReactions {
   }
 
   // Play one specific clip (the meme whose catchphrase was just typed), captioned with it.
-  // onEnd runs when the clip finishes, is skipped or is replaced (a special move waits on it).
-  playClip(clip, { side = 'right', priority = 3, caption, onEnd } = {}) {
+  // It's the largest overlay, floating over the hero whose phrase it is.
+  playClip(clip, { side = 'left', priority = 3, caption } = {}) {
     if (!this.ready || this.frequency === 'off') return false;
     this.recent.push(clip.file);
     if (this.recent.length > RECENT_MEMORY) this.recent.shift();
-    this.play(clip, { priority, side, tag: 'misc', caption, cutscene: this.freezeMode !== 'off', onEnd });
+    this.play(clip, { priority, side, tag: 'misc', caption, phrase: true });
     return true;
   }
 
@@ -275,7 +237,16 @@ export class MemeReactions {
     return clip;
   }
 
-  play(clip, { priority, side, tag = 'misc', caption, cutscene = false, maxSeconds = 6, onEnd = null }) {
+  // Clip height in px: a share of the smaller screen side, bigger for bigger moments.
+  clipHeight(priority, phrase) {
+    // Reference size: the screen height, but on tall narrow screens (phones) scale from the width
+    // too, so sizes stay graded instead of collapsing to the minimum.
+    const ref = Math.min(window.innerHeight, window.innerWidth * 1.5);
+    const share = phrase ? SIZE.phrase : SIZE[priority] || SIZE[1];
+    return Math.round(Math.max(MIN_CLIP_PX, Math.min(MAX_CLIP_PX, ref * share)));
+  }
+
+  play(clip, { priority, side, tag = 'misc', caption, phrase = false }) {
     if (this.current) this.hide(true);
     const v = this.video;
     v.muted = false;
@@ -285,17 +256,18 @@ export class MemeReactions {
 
     const captions = CAPTIONS[tag] || CAPTIONS.misc;
     this.badge.textContent = caption || captions[Math.floor(Math.random() * captions.length)];
-    this.root.className = `show side-${side} prio-${priority}${cutscene ? ' cutscene' : ''}`;
-    this.frozen = cutscene;
-    document.body.classList.toggle('meme-frozen', cutscene);
-    // retrigger the pop-in animation when swapping clips
-    void this.root.offsetWidth;
-
-    const length = Math.min(clip.duration || 5, cutscene ? maxSeconds : 6);
-    const limit = (length + 0.6) * 1000;
-    this.current = { priority, onEnd, startedAt: performance.now(), timer: setTimeout(() => this.finish(), limit) };
+    this.root.style.setProperty('--meme-h', `${this.clipHeight(priority, phrase)}px`);
+    this.root.className = `show prio-${priority}${phrase ? ' phrase' : ''}`;
+    this.current = {
+      priority,
+      side,
+      startedAt: performance.now(),
+      snap: true, // first frame jumps straight to the fighter instead of sliding in from the corner
+      timer: setTimeout(() => this.finish(), ((Math.min(clip.duration || 5, 6)) + 0.6) * 1000)
+    };
     this.stats.played++;
     this.duckMusic(true);
+    this.updateAnchor();
 
     const id = ++this.playId;
     const started = v.play();
@@ -311,24 +283,56 @@ export class MemeReactions {
     }
   }
 
+  // Float the overlay above the head of the fighter it's about. Called every frame while playing,
+  // so it rides along as they walk, jump or get launched.
+  updateAnchor() {
+    const cur = this.current;
+    const { project, hero, enemy } = this.stage;
+    if (!cur || !project) return;
+    const fighter = cur.side === 'left' ? hero : enemy;
+    if (!fighter) return;
+
+    const head = fighter.anchor('head');
+    const p = project(head.x, head.y + 0.7);
+    const W = window.innerWidth;
+    const w = this.root.offsetWidth || 220;
+    const h = this.root.offsetHeight || 140;
+    const margin = 10;
+
+    // The frame's bottom-centre sits just above the head. Keep it on screen and out from under the HUD.
+    let x = Math.max(w / 2 + margin, Math.min(W - w / 2 - margin, p.x));
+    let y = p.y - 6;
+    if (y - h < HUD_TOP_PX) y = HUD_TOP_PX + h;
+
+    if (cur.snap) {
+      this.pos.x = x;
+      this.pos.y = y;
+      cur.snap = false;
+    } else {
+      this.pos.x += (x - this.pos.x) * 0.4;
+      this.pos.y += (y - this.pos.y) * 0.4;
+    }
+    this.root.style.left = `${this.pos.x.toFixed(1)}px`;
+    this.root.style.top = `${this.pos.y.toFixed(1)}px`;
+
+    // The little pointer under the frame keeps aiming at the head even when the frame is clamped
+    const tail = Math.max(14, Math.min(86, ((p.x - (this.pos.x - w / 2)) / w) * 100));
+    this.root.style.setProperty('--tail', `${tail.toFixed(1)}%`);
+  }
+
   finish() {
     if (!this.current) return;
     this.hide(false);
   }
 
   hide(immediate) {
-    const done = this.current;
-    if (done) clearTimeout(done.timer);
+    if (this.current) clearTimeout(this.current.timer);
     this.current = null;
     this.lastEnd = performance.now();
-    this.frozen = false;
-    document.body.classList.remove('meme-frozen');
-    this.root.classList.remove('show', 'cutscene');
+    this.root.classList.remove('show');
     this.video.pause();
     if (immediate) this.video.removeAttribute('src');
     this.duckMusic(false);
-    // Whatever was waiting on this clip (a special move) goes now
-    if (done && done.onEnd) done.onEnd();
   }
 
   // Dip the background music while a clip speaks so the audio stays intelligible.

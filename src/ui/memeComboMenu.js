@@ -110,17 +110,11 @@ export class MemeComboMenu {
                   .join('')}
                 <button class="form-btn" id="meme-preview-btn">&#9654; Preview one</button>
               </div>
-              <div class="form-row" id="meme-freeze-row">
-                <span class="tip-text" style="align-self:center">Stop the game during memes:</span>
-                ${[['all', 'Always'], ['big', 'Big moments'], ['off', 'Never']]
-                  .map(([key, label]) => `<button class="form-btn meme-freeze-btn" data-freeze="${key}">${label}</button>`)
-                  .join('')}
-              </div>
               <div class="slider-row">
                 <span>Meme Volume:</span>
                 <input type="range" id="vol-meme" min="0" max="100" value="80" />
               </div>
-              <span class="tip-text">Clips pop up during the fight: KO laughs, typo apologies, power-up hype, time-skip cards when a new foe arrives.</span>
+              <span class="tip-text">Memes float over the head of whoever they're about and never stop the fight: KO laughs, typo apologies, power-up hype, time-skip cards when a new foe arrives.</span>
             </div>
 
             <!-- Section 2: Custom Meme Phrase -->
@@ -186,7 +180,6 @@ export class MemeComboMenu {
     this.diffBtns = this.menuRoot.querySelectorAll('.diff-btn');
     this.gfxBtns = this.menuRoot.querySelectorAll('.gfx-btn');
     this.memeFreqBtns = this.menuRoot.querySelectorAll('.meme-freq-btn');
-    this.memeFreezeBtns = this.menuRoot.querySelectorAll('.meme-freeze-btn');
   }
 
   bindEvents() {
@@ -253,15 +246,6 @@ export class MemeComboMenu {
           syncFreq();
         });
       });
-      const syncFreeze = () =>
-        this.memeFreezeBtns.forEach((b) => b.classList.toggle('active', b.dataset.freeze === this.memes.freezeMode));
-      syncFreeze();
-      this.memeFreezeBtns.forEach((btn) =>
-        btn.addEventListener('click', () => {
-          this.memes.setFreezeMode(btn.dataset.freeze);
-          syncFreeze();
-        })
-      );
       const memeVol = document.getElementById('vol-meme');
       memeVol.value = Math.round(this.memes.volume * 100);
       memeVol.addEventListener('input', (e) => this.memes.setVolume(e.target.value / 100));

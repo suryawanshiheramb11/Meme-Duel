@@ -438,8 +438,8 @@ export class ComboEngine {
     if (res.ko) this.onKO(enemy, hero);
   }
 
-  // Finishing the whole phrase freezes the fight, plays that meme's clip as a cutscene, and only
-  // then unleashes the special move the meme was matched to.
+  // Finishing the whole phrase plays that meme's clip overhead and unleashes the special move the
+  // meme was matched to, immediately and at the same time. The fight and the typing carry on.
   triggerSpecial(hero, enemy, item) {
     if (!hero) return;
     const move = (item && item.move) || 'beam';
@@ -462,14 +462,12 @@ export class ComboEngine {
       }
     };
 
-    if (this.memes && item && item.clip) {
-      // Freeze-frame on the final keystroke, play the meme, then the move fires
-      const played = this.memes.playClip(item.clip, { side: 'right', priority: 3, caption: item.phrase, onEnd: perform });
-      if (!played) perform(); // memes switched off: go straight to the move
-    } else {
-      if (this.memes) this.memes.trigger('hype', { priority: 2, side: 'right' });
-      perform();
+    // Typing never stops: the meme floats over the hero while the move plays out at the same time
+    if (this.memes) {
+      if (item && item.clip) this.memes.playClip(item.clip, { side: 'left', priority: 3, caption: item.phrase });
+      else this.memes.trigger('hype', { priority: 2, side: 'left' });
     }
+    perform();
   }
 
   alive(enemy) {

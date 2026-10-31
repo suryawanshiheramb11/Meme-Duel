@@ -19,6 +19,7 @@ const OUT = path.join(ROOT, 'assets', 'memes');
 const CACHE = path.join(os.tmpdir(), 'meme-duel-cache');
 const MAX_SECONDS = 6;
 const RETAG_ONLY = process.argv.includes('--retag');
+const RECOMPRESS = process.argv.includes('--recompress'); // redo every clip from the cached originals
 
 // Which fight moments each clip suits, matched on the (lowercased, de-underscored) clip title.
 // Clips matching nothing here still play as random "misc" reactions.
@@ -272,12 +273,28 @@ async function download(item, dest) {
   fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
 }
 
+// Many source clips are portrait videos sitting inside a widescreen frame with black bars.
+// Find the real picture area so the in-game overlay can be compact instead of mostly black.
+function detectCrop(src) {
+  const probe = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', src], { encoding: 'utf8' });
+  const [W, H] = (probe.stdout || '').trim().split(',').map(Number);
+  if (!W || !H) return null;
+  const r = spawnSync('ffmpeg', ['-v', 'info', '-t', '3', '-i', src, '-vf', 'cropdetect=limit=28:round=2:reset=0', '-f', 'null', '-'], { encoding: 'utf8' });
+  const hit = [...(r.stderr || '').matchAll(/crop=(\d+):(\d+):(\d+):(\d+)/g)].pop();
+  if (!hit) return null;
+  const [w, h, x, y] = hit.slice(1).map(Number);
+  // only crop when it removes real bars (more than 8% of the frame) and leaves a sane picture
+  if (w * h > W * H * 0.92 || w < 120 || h < 120) return null;
+  return `crop=${w}:${h}:${x}:${y},`;
+}
+
 function compress(src, dest) {
+  const crop = detectCrop(src) || '';
   const r = spawnSync(
     'ffmpeg',
     [
       '-y', '-v', 'error', '-i', src, '-t', String(MAX_SECONDS),
-      '-vf', "scale='if(gt(iw,ih),-2,360)':'if(gt(iw,ih),360,-2)'",
+      '-vf', crop + "scale='if(gt(iw,ih),-2,360)':'if(gt(iw,ih),360,-2)'",
       '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '30', '-pix_fmt', 'yuv420p',
       '-c:a', 'aac', '-b:a', '80k', '-ac', '2', '-movflags', '+faststart', dest
     ],
@@ -294,6 +311,7 @@ async function main() {
   if (!ffmpeg) console.warn('ffmpeg not found: copying originals uncompressed (large).');
 
   const failed = [];
+  if (RECOMPRESS) fs.rmSync(path.join(OUT, 'thumbs'), { recursive: true, force: true }); // thumbnails must match the new crop
   if (!RETAG_ONLY) {
     const queue = [...items];
     let done = 0;
@@ -302,7 +320,7 @@ async function main() {
         const item = queue.shift();
         const dest = path.join(OUT, item.file);
         try {
-          if (!fs.existsSync(dest) || fs.statSync(dest).size < 1000) {
+          if (RECOMPRESS || !fs.existsSync(dest) || fs.statSync(dest).size < 1000) {
             const raw = path.join(CACHE, `${item.id}.mp4`);
             if (!fs.existsSync(raw) || fs.statSync(raw).size < 1000) await download(item, raw);
             if (ffmpeg) compress(raw, dest);

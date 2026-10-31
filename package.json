@@ -1,7 +1,7 @@
 {
-  "name": "typefighter",
+  "name": "meme-duel",
   "version": "1.0.0",
-  "description": "TypeFighter - Stickman Typing Beat 'Em Up Desktop Game",
+  "description": "Meme Duel - a typing beat 'em up where every sentence is a meme",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -17,8 +17,8 @@
     "beat-em-up",
     "stickman",
     "game",
-    "electron",
-    "canvas2d"
+    "memes",
+    "three.js"
   ],
   "author": "Next Toppers",
   "license": "MIT",

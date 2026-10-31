@@ -139,6 +139,12 @@ export class ArenaManager {
     return p;
   }
 
+  // Screen pixel position of a world point (used to float overlays above the fighters)
+  worldToScreen(x, y, z = 0) {
+    const v = new THREE.Vector3(x, y, z).project(this.camera);
+    return { x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight };
+  }
+
   triggerScreenShake(intensity = 0.3) {
     this.shakeIntensity = Math.min(1.2, this.shakeIntensity + intensity);
   }
