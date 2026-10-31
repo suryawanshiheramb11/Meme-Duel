@@ -17,6 +17,25 @@ const POOL = 'md-q1';
 const SLOTS = 6;
 const PROTOCOL = 1;
 
+// Optional relay servers from src/net/ice.json: either a fixed "iceServers" list, or a "fetchUrl" that returns
+// one (the way Metered.ca hands out fresh credentials: https://YOURAPP.metered.live/api/v1/turn/credentials?apiKey=KEY)
+async function loadIceConfig() {
+  try {
+    const r = await fetch('src/net/ice.json', { cache: 'no-store' });
+    const cfg = r.ok ? await r.json() : null;
+    if (!cfg) return;
+    if (Array.isArray(cfg.iceServers)) extraIce = [...cfg.iceServers];
+    if (cfg.fetchUrl) {
+      const res = await fetch(cfg.fetchUrl, { cache: 'no-store' });
+      const list = res.ok ? await res.json() : null;
+      const servers = Array.isArray(list) ? list : list && Array.isArray(list.iceServers) ? list.iceServers : [];
+      extraIce = [...extraIce, ...servers];
+    }
+  } catch (e) {
+    /* no relay configured, or it could not be reached: direct connections still work */
+  }
+}
+
 let libPromise = null;
 export function loadPeerLib() {
   if (window.Peer) return Promise.resolve();
@@ -24,14 +43,7 @@ export function loadPeerLib() {
     libPromise = new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = PEER_SCRIPT;
-      s.onload = () =>
-        fetch('src/net/ice.json', { cache: 'no-store' })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((cfg) => {
-            if (cfg && Array.isArray(cfg.iceServers)) extraIce = cfg.iceServers;
-          })
-          .catch(() => {})
-          .then(resolve);
+      s.onload = () => loadIceConfig().then(resolve);
       s.onerror = () => reject(new Error('Could not load the multiplayer library.'));
       document.head.appendChild(s);
     });

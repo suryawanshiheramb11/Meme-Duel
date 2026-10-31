@@ -111,8 +111,10 @@ It is peer-to-peer (WebRTC through PeerJS). The only shared service is PeerJS's 
 **What can stop two players connecting** ("Found room XXXXX but could not connect"): a direct link needs both networks to allow it. That works on most home Wi-Fi and fails on mobile hotspots, many campus and office networks, some VPNs, Wi-Fi with "client isolation", and browsers with WebRTC blocked (strict privacy modes). Players on the same Wi-Fi almost always connect. For everyone else the game needs a **TURN relay server**, which has to be a server with credentials, so none is bundled (the free public one this project first used has since shut down). To add one, put its details in `src/net/ice.json` and redeploy:
 
 ```json
-{ "iceServers": [ { "urls": "turn:YOUR-HOST:3478", "username": "USER", "credential": "PASSWORD" } ] }
+{ "iceServers": [ { "urls": "turn:YOUR-HOST:3478", "username": "USER", "credential": "PASSWORD" } ], "fetchUrl": "" }
 ```
+
+With Metered.ca you can instead paste the credentials link it gives you into `fetchUrl` (`https://YOURAPP.metered.live/api/v1/turn/credentials?apiKey=KEY`) and leave `iceServers` empty.
 
 Free options: a Metered.ca or Cloudflare Calls TURN account (sign up, copy the credentials), or run your own `coturn`. The free broker is also a community service with no uptime guarantee. To self-host the broker, run `npx peerjs --port 9000` and open the game with `?signal=localhost:9000`.
 

@@ -1,3 +1,4 @@
 {
-  "iceServers": []
+  "iceServers": [],
+  "fetchUrl": ""
 }
