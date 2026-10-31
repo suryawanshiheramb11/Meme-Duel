@@ -48,7 +48,7 @@ export class Match {
         <h2 class="mo-title" id="mo-title"></h2>
         <p class="mo-score" id="mo-score"></p>
         <div class="mo-actions">
-          <button class="menu-btn compact" id="mo-again"><span class="mb-label">Rematch</span><span class="mb-sub">&nbsp;</span><span class="mb-key">R</span></button>
+          <button class="menu-btn compact" id="mo-again"><span class="mb-label">Rematch</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Enter</span></button>
           <button class="menu-btn compact" id="mo-menu"><span class="mb-label">Main menu</span><span class="mb-sub">&nbsp;</span><span class="mb-key">M</span></button>
         </div>
         <p class="mo-note" id="mo-note"></p>
@@ -68,7 +68,11 @@ export class Match {
           return;
         }
         if (this.state !== 'over') return;
-        if (e.code === 'KeyR') this.requestRematch();
+        if ((e.code === 'KeyR' || e.code === 'Enter') && !e.repeat) this.requestRematch();
+        else if (e.code === 'Enter') {
+          e.preventDefault();
+          return;
+        }
         else if (e.code === 'KeyM') this.leave();
         else return;
         e.preventDefault();

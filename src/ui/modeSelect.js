@@ -48,7 +48,7 @@ export class ModeSelect {
             </button>`;
           }).join('')}
         </div>
-        <p class="ms-hint">Press <b>1</b>, <b>2</b> or <b>3</b>, or click a card. Change it any time from the menu (ESC).</p>
+        <p class="ms-hint">Pick with <b>1</b>, <b>2</b>, <b>3</b> or <b>&larr; &rarr;</b>, then press <b>ENTER</b> to start. Change it any time from the pause menu (ESC).</p>
       </div>`;
     container.appendChild(this.root);
 
@@ -87,7 +87,7 @@ export class ModeSelect {
     } else if (e.code === 'Enter' || e.code === 'Space') {
       e.preventDefault();
       e.stopPropagation();
-      this.pick(this.selected);
+      if (!e.repeat) this.pick(this.selected);
     }
   }
 

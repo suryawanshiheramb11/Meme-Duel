@@ -68,7 +68,7 @@ export class OnlineLobby {
   onKey(e) {
     if (!this.isOpen || e.target === this.input) return;
     if (this.inRoom) {
-      if (e.code === 'KeyR') this.roomAct('ready');
+      if ((e.code === 'KeyR' || e.code === 'Enter') && !e.repeat) this.roomAct('ready');
       else if (e.code === 'Escape') this.roomAct('leave');
       e.preventDefault();
       e.stopPropagation();
@@ -185,7 +185,7 @@ export class OnlineLobby {
       ${code && kind === 'room' ? `<div class="ol-share"><span class="ol-code" id="ol-code">${code}</span><button class="ol-link" id="ol-copy">Copy invite link</button></div>` : ''}
       <p class="ol-status ok" id="ol-status" role="status"></p>
       <div class="ol-foot ol-foot-row">
-        <button class="menu-btn compact" data-room="ready" id="room-ready"><span class="mb-label">Ready</span><span class="mb-sub">&nbsp;</span><span class="mb-key">R</span></button>
+        <button class="menu-btn compact" data-room="ready" id="room-ready"><span class="mb-label">Ready</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Enter</span></button>
         <button class="menu-btn compact" data-room="leave"><span class="mb-label">Leave</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Esc</span></button>
       </div>`;
     this.statusEl = card.querySelector('#ol-status');

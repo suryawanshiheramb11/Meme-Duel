@@ -345,3 +345,9 @@ kbd.key {
 #dlg-how kbd.key { line-height: 20px; vertical-align: 2px; margin-right: 4px; }
 /* lift the rules so each line of text rests on one, like handwriting */
 #dlg-how .ld-body { background-position: 0 -7px; }
+
+.ld-start { margin-top: 16px; font-size: 13px; font-weight: bold; letter-spacing: 1.5px; color: #c9d3e2; animation: ld-blink 1.6s ease-in-out infinite; }
+.ld-start kbd.key { color: var(--ink); background: var(--gold); margin: 0 4px; }
+@keyframes ld-blink { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .ld-start { animation: none; } }
+@media (min-width: 921px) and (max-height: 860px) { .ld-start { margin-top: 10px; } }

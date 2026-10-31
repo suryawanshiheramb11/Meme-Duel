@@ -178,6 +178,12 @@ window.addEventListener('keydown', (e) => {
   if (n >= 1 && n <= buttons.length) {
     e.preventDefault();
     buttons[n - 1].click();
+  } else if (e.key === 'Enter') {
+    if (e.repeat) return;
+    // Enter starts: the focused menu item, or a fight against the bot when nothing is focused
+    e.preventDefault();
+    const focused = buttons.find((b) => b === document.activeElement);
+    (focused || buttons[0]).click();
   } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault();
     const i = buttons.indexOf(document.activeElement);
