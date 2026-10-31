@@ -6,6 +6,7 @@
 // health (honouring their guard and dash) and reports the result back in the state stream.
 // The host also keeps the round clock, decides how rounds end, and tells the guest.
 import { VERSUS } from '../combat/difficulty.js';
+import { currentGear, isValidGear } from '../core/locker.js';
 
 const STATE_MS = 50;
 const MAX_HIT = 40;
@@ -59,10 +60,16 @@ export class Versus {
       session.close();
     });
     this.app.versus = this;
+    // show each other's store gear
+    session.send({ t: 'gear', g: currentGear() });
 
     // The host starts once the guest confirms it is listening
     if (this.host) this.guestReady = false;
-    else session.send({ t: 'ready' });
+    else {
+      // keep announcing until the host's first round message arrives (the host may still be loading)
+      this.readyTimer = setInterval(() => session.send({ t: 'ready' }), 500);
+      session.send({ t: 'ready' });
+    }
   }
 
   // ------------------------------------------------------------- outgoing
@@ -150,6 +157,9 @@ export class Versus {
   onMessage(m) {
     const { match, hero, puppet, app } = this;
     switch (m.t) {
+      case 'gear':
+        puppet.gear = isValidGear(m.g) ? m.g : null;
+        break;
       case 'ready':
         if (this.host && !this.guestReady) {
           this.guestReady = true;
@@ -164,6 +174,7 @@ export class Versus {
         break;
       case 'round':
         if (this.host) break;
+        clearInterval(this.readyTimer);
         if (m.n === 1) {
           match.scores = { me: 0, foe: 0 };
           match.renderPips();

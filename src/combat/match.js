@@ -1,3 +1,4 @@
+import { addCoins } from '../core/locker.js';
 // Meme Duel - rounds. A match is first to two round wins (best of three). A round ends on a KO, or
 // when the clock runs out and the fighter with more health left takes it. Used for both the bot
 // and online duels; online, only the host decides how a round ends and tells the guest.
@@ -304,6 +305,7 @@ export class Match {
   fatality(kind, byMe) {
     if (this.state !== 'finish' && this.state !== 'between') return;
     this.state = 'fatal';
+    this.fatalityDone = byMe;
     this.timer = 3.6;
     this.hint.hidden = true;
     const winner = byMe ? this.hero : this.enemy;
@@ -360,6 +362,11 @@ export class Match {
     this.over.querySelector('#mo-score').textContent = `${this.names.me} ${this.scores.me} - ${this.scores.foe} ${this.names.foe}`;
     this.moNote.textContent = '';
     this.moAgain.disabled = false;
+    // coins for the store: rounds won, a bonus for the match, and for a fatality
+    const earned = this.scores.me * 15 + (won ? 60 : 20) + (this.fatalityDone ? 40 : 0);
+    addCoins(earned);
+    this.over.querySelector('#mo-score').textContent += `   +${earned} COINS`;
+    this.fatalityDone = false;
     if (won && this.memes) this.memes.trigger('victory', { priority: 3, side: 'left' });
     if (this.hooks.onOver && this.authority) this.hooks.onOver(this.scores.me, this.scores.foe);
   }

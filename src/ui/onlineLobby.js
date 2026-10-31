@@ -67,6 +67,13 @@ export class OnlineLobby {
 
   onKey(e) {
     if (!this.isOpen || e.target === this.input) return;
+    if (this.inRoom) {
+      if (e.code === 'KeyR') this.roomAct('ready');
+      else if (e.code === 'Escape') this.roomAct('leave');
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     const map = { Digit1: 'quick', Digit2: 'create', Digit3: 'join', Escape: 'cancel' };
     if (map[e.code]) {
       e.preventDefault();
@@ -119,11 +126,10 @@ export class OnlineLobby {
       this.copyEl.hidden = true;
       this.status(this.explain(err), 'err');
     };
-    const done = (session) => {
+    const done = (session, kind = 'room') => {
       if (this.cancelled) return session.close();
-      this.isOpen = false;
-      this.root.remove();
-      this.onSession(session);
+      this.pending = null;
+      this.showRoom({ kind, code: this.roomCode || null, session });
     };
 
     if (name === 'quick') {
@@ -132,7 +138,7 @@ export class OnlineLobby {
         isCancelled: () => this.cancelled,
         onStatus: (s) => this.status(s === 'waiting' ? 'Waiting for another player to search...' : 'Looking for an opponent...')
       })
-        .then(done)
+        .then((session) => done(session, 'quick'))
         .catch(fail);
     } else if (name === 'create') {
       this.status('Opening a room...');
@@ -141,18 +147,119 @@ export class OnlineLobby {
           if (this.cancelled) return room.cancel();
           this.pending = room;
           this.code = room.code;
-          this.codeEl.textContent = room.code;
-          this.codeEl.hidden = false;
-          this.copyEl.hidden = false;
-          this.status('Waiting for your friend to join. Share the code or the invite link.', 'ok');
-          room.ready.then(done).catch(fail);
+          this.roomCode = room.code;
+          // the host goes straight into the room and waits there for a friend
+          this.showRoom({ kind: 'room', code: room.code, session: null, host: true });
+          room.ready.then((session) => done(session)).catch(fail);
         })
         .catch(fail);
     } else if (name === 'join') {
       const code = cleanCode(this.input.value);
       this.status(`Joining room ${code || '...'}`);
-      joinRoom(code).then(done).catch(fail);
+      this.roomCode = code;
+      joinRoom(code).then((session) => done(session)).catch(fail);
     }
+  }
+
+  // The room: both players see who is in, then press READY. The match starts when both are ready.
+  showRoom({ kind, code, session, host = false }) {
+    this.stateRoom = { kind, code, session, host, me: false, foe: false };
+    const card = this.root.querySelector('.ol-card');
+    const title = kind === 'quick' ? 'QUICK MATCH' : `ROOM ${code}`;
+    card.innerHTML = `
+      <p class="ol-kicker">${kind === 'quick' ? 'OPPONENT FOUND' : 'PRIVATE ROOM'}</p>
+      <h2 class="ol-title">${title}</h2>
+      <div class="ol-slots">
+        <div class="ol-slot in" id="slot-me"><span class="ol-role">YOU${session ? (session.role === 'host' ? ' &middot; HOST' : ' &middot; GUEST') : ' &middot; HOST'}</span><span class="ol-state" id="slot-me-state">NOT READY</span></div>
+        <div class="ol-slot${session ? ' in' : ''}" id="slot-foe"><span class="ol-role" id="slot-foe-role">${session ? 'RIVAL' : 'EMPTY SEAT'}</span><span class="ol-state" id="slot-foe-state">${session ? 'NOT READY' : 'WAITING FOR A PLAYER'}</span></div>
+      </div>
+      ${code && kind === 'room' ? `<div class="ol-share"><span class="ol-code" id="ol-code">${code}</span><button class="ol-link" id="ol-copy">Copy invite link</button></div>` : ''}
+      <p class="ol-status ok" id="ol-status" role="status"></p>
+      <div class="ol-foot ol-foot-row">
+        <button class="menu-btn compact" data-room="ready" id="room-ready"><span class="mb-label">Ready</span><span class="mb-sub">&nbsp;</span><span class="mb-key">R</span></button>
+        <button class="menu-btn compact" data-room="leave"><span class="mb-label">Leave</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Esc</span></button>
+      </div>`;
+    this.statusEl = card.querySelector('#ol-status');
+    this.copyEl = card.querySelector('#ol-copy');
+    if (this.copyEl) this.copyEl.addEventListener('click', () => this.copyLink());
+    card.querySelectorAll('[data-room]').forEach((b) => b.addEventListener('click', () => this.roomAct(b.dataset.room)));
+    this.inRoom = true;
+    this.roomButton = card.querySelector('#room-ready');
+    this.roomButton.disabled = !session;
+    this.status(session ? 'Opponent connected. Press READY when you are set.' : 'Room open. Waiting for another player to join with this code...');
+    if (session) this.attachSession(session);
+  }
+
+  attachSession(session) {
+    const st = this.stateRoom;
+    st.session = session;
+    const slot = this.root.querySelector('#slot-foe');
+    slot.classList.add('in');
+    this.root.querySelector('#slot-foe-role').textContent = 'RIVAL';
+    this.root.querySelector('#slot-foe-state').textContent = 'NOT READY';
+    this.roomButton.disabled = false;
+    this.status('Opponent connected. Press READY when you are set.');
+    session.onMessage((m) => {
+      if (m.t !== 'rdy') return;
+      st.foe = !!m.v;
+      this.paintRoom();
+      this.maybeStart();
+    });
+    session.onClose(() => {
+      if (!this.inRoom) return;
+      this.status('Your opponent left the room.', 'err');
+      this.root.querySelector('#slot-foe').classList.remove('in');
+      this.root.querySelector('#slot-foe-role').textContent = 'LEFT';
+      this.root.querySelector('#slot-foe-state').textContent = 'DISCONNECTED';
+      this.roomButton.disabled = true;
+    });
+  }
+
+  roomAct(what) {
+    const st = this.stateRoom;
+    if (what === 'leave') {
+      this.inRoom = false;
+      if (st.session) {
+        st.session.send({ t: 'bye' });
+        st.session.close();
+      }
+      if (this.pending) this.pending.cancel();
+      location.href = location.pathname;
+      return;
+    }
+    if (!st.session) return;
+    st.me = !st.me;
+    st.session.send({ t: 'rdy', v: st.me });
+    this.paintRoom();
+    this.maybeStart();
+  }
+
+  paintRoom() {
+    const st = this.stateRoom;
+    const paint = (id, ready) => {
+      const el = this.root.querySelector(id);
+      el.textContent = ready ? 'READY' : 'NOT READY';
+      el.parentElement.classList.toggle('ready', ready);
+    };
+    paint('#slot-me-state', st.me);
+    paint('#slot-foe-state', st.foe);
+    this.roomButton.querySelector('.mb-label').textContent = st.me ? 'Not ready' : 'Ready';
+    if (!(st.me && st.foe)) {
+      this.status(st.me ? 'You are ready. Waiting for your opponent...' : st.foe ? 'Your opponent is ready. Press READY!' : 'Opponent connected. Press READY when you are set.');
+    }
+  }
+
+  maybeStart() {
+    const st = this.stateRoom;
+    if (!(st.me && st.foe) || this.starting) return;
+    this.starting = true;
+    this.status('Both ready. Fight starts now!', 'ok');
+    setTimeout(() => {
+      this.inRoom = false;
+      this.isOpen = false;
+      this.root.remove();
+      this.onSession(st.session);
+    }, 700);
   }
 
   async copyLink() {

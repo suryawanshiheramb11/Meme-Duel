@@ -62,6 +62,7 @@ export class PaperStandee {
 
     // Look
     this.form = 'base';
+    this.gear = null; // store accessories: { head, face }
     this.capColor = null; // lets the online opponent wear a different cap
     this.variant = isHero ? 'cap' : 'glasses';
     this.bigHair = false;
@@ -354,6 +355,7 @@ export class PaperStandee {
         flash: this.flash,
         bigHair: this.bigHair,
         capColor: this.capColor,
+        gear: this.gear,
         shield: this.guarding || this.guardTimer > 0,
         glow: this.quality >= 1
       },

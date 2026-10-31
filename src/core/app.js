@@ -14,6 +14,7 @@ import { PerfMonitor } from './perfMonitor.js';
 import { loadDifficulty } from '../combat/difficulty.js';
 import { InputManager } from './inputManager.js';
 import { Match } from '../combat/match.js';
+import { currentGear } from './locker.js';
 import { createArenaPicker, loadArena } from '../ui/arenaPicker.js';
 import { OnlineLobby } from '../ui/onlineLobby.js';
 import { Versus } from '../net/versus.js';
@@ -55,6 +56,7 @@ export class App {
     // 3. Animated paper-cutout fighters
     this.hero = new PaperStandee(true, this.arena.scene);
     this.enemy = new PaperStandee(false, this.arena.scene);
+    this.hero.gear = currentGear(); // whatever you bought and equipped in the store
     this.hero.x = -0.55;
     this.enemy.x = 0.5;
     this.fx.attachAura(this.hero);

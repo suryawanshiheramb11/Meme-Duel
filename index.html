@@ -46,7 +46,8 @@
           <li><button class="menu-btn" data-action="bot"><span class="mb-label">Play vs Bot</span><span class="mb-sub">Easy, Medium or Hard</span><span class="mb-key">1</span></button></li>
           <li><button class="menu-btn" data-action="online"><span class="mb-label">Play Online</span><span class="mb-sub">Quick match or a room code</span><span class="mb-key">2</span></button></li>
           <li><button class="menu-btn" data-action="how"><span class="mb-label">How to Play</span><span class="mb-sub">Controls, moves and bot tips</span><span class="mb-key">3</span></button></li>
-          <li><button class="menu-btn" data-action="memes"><span class="mb-label">Meme Gallery</span><span class="mb-sub">All 71 memes and their moves</span><span class="mb-key">4</span></button></li>
+          <li><button class="menu-btn" data-action="store"><span class="mb-label">Store</span><span class="mb-sub" id="store-sub">Headbands, hats and glasses</span><span class="mb-key">4</span></button></li>
+          <li><button class="menu-btn" data-action="memes"><span class="mb-label">Meme Gallery</span><span class="mb-sub">All 71 memes and their moves</span><span class="mb-key">5</span></button></li>
         </ul>
 
         <p class="ld-foot">Made for a desktop browser with a keyboard.</p>
@@ -103,6 +104,24 @@
             <li>Hard bots learn: spam one move and they start reading it. Hide behind guard and they grab you.</li>
             <li>There are secret moves. Nothing here will tell you how.</li>
           </ul>
+        </div>
+        <footer><button class="menu-btn compact" data-close><span class="mb-label">Back</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Esc</span></button></footer>
+      </div>
+    </dialog>
+
+    <!-- Store -->
+    <dialog class="ld-dialog" id="dlg-store" aria-labelledby="store-title">
+      <div class="ld-dialog-inner">
+        <header><h2 id="store-title">STORE</h2><p><b id="st-coins">0</b> coins. Win matches to earn more: rounds, the match and fatalities all pay.</p></header>
+        <div class="ld-body st-body">
+          <div class="st-preview"><div class="st-frame"><canvas id="st-canvas" width="768" height="768" aria-label="Your fighter wearing the selected accessories"></canvas></div><p id="st-wear"></p></div>
+          <div class="st-shop">
+            <div class="gal-filters" id="st-tabs">
+              <button class="gal-chip on" data-slot="head">HEAD</button>
+              <button class="gal-chip" data-slot="face">FACE</button>
+            </div>
+            <div class="st-grid" id="st-grid"></div>
+          </div>
         </div>
         <footer><button class="menu-btn compact" data-close><span class="mb-label">Back</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Esc</span></button></footer>
       </div>

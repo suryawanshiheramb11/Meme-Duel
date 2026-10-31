@@ -11,6 +11,7 @@ import {
   drawStickman,
   createScratch
 } from '../render/stickman/stickmanRig.js';
+import { ACCESSORIES, getCoins, isOwned, getEquipped, currentGear, buy, toggleEquip } from '../core/locker.js';
 
 // Everything the game loads, so it can be fetched in parallel while you read the page.
 const GAME_MODULES = [
@@ -26,6 +27,7 @@ const GAME_MODULES = [
   'src/combat/difficulty.js',
   'src/combat/secrets.js',
   'src/combat/match.js',
+  'src/core/locker.js',
   'src/render/arenas/arenaManager.js',
   'src/render/effects/effectsManager.js',
   'src/render/stickman/stickmanRig.js',
@@ -157,6 +159,10 @@ const actions = {
   bot: () => startGame('bot'),
   online: () => startGame('online', invite ? { room: invite } : {}),
   how: () => openDialog('dlg-how'),
+  store: () => {
+    openDialog('dlg-store');
+    openStore();
+  },
   memes: () => {
     openDialog('dlg-memes');
     buildGallery();
@@ -471,3 +477,79 @@ if (stage.canvas) {
   // fonts first, so the callouts use the game's lettering from the first frame
   (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).finally(startStage);
 }
+
+
+// ------------------------------------------------------------------ the store
+// Spend coins from matches on accessories. The preview is the game's own rig wearing whatever is equipped.
+const store = { slot: 'head', raf: 0, state: createPoseState('guard'), t: 0, last: 0, canvas: null, scratch: null, mk: null };
+
+function storeCanvasInit() {
+  if (store.mk) return;
+  store.canvas = $('#st-canvas');
+  store.mk = (w, h) => {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    return c;
+  };
+  store.scratch = createScratch(store.mk, store.canvas.width / CANVAS_SIZE);
+}
+
+function storeFrame(now) {
+  const dlg = $('#dlg-store');
+  if (!dlg.open) {
+    store.raf = 0;
+    return;
+  }
+  store.raf = requestAnimationFrame(storeFrame);
+  const dt = Math.min(0.05, (now - store.last) / 1000 || 0.016);
+  store.last = now;
+  store.t += dt;
+  blendPose(store.state, store.t % 6 < 3.6 ? 'guard' : 'victory', dt, 14);
+  drawStickman(
+    store.canvas,
+    store.state,
+    { isHero: true, variant: 'cap', form: 'base', face: 'normal', time: store.t, flash: 0, bigHair: false, glow: true, gear: currentGear() },
+    store.mk,
+    store.scratch
+  );
+}
+
+function renderStore() {
+  $('#st-coins').textContent = getCoins();
+  $('#store-sub').textContent = `${getCoins()} coins: headbands, hats and glasses`;
+  const eq = getEquipped();
+  const name = (id) => (id ? ACCESSORIES.find((a) => a.id === id).name : 'nothing');
+  $('#st-wear').textContent = `Head: ${name(eq.head)}   Face: ${name(eq.face)}`;
+  const grid = $('#st-grid');
+  grid.innerHTML = '';
+  ACCESSORIES.filter((a) => a.slot === store.slot).forEach((a) => {
+    const owned = isOwned(a.id);
+    const worn = eq[a.slot] === a.id;
+    const card = document.createElement('div');
+    card.className = `st-card${worn ? ' worn' : ''}`;
+    const afford = getCoins() >= a.price;
+    card.innerHTML = `<b class="st-name">${a.name}</b><span class="st-blurb">${a.blurb}</span>
+      <button class="st-btn${owned ? ' own' : afford ? '' : ' no'}" ${!owned && !afford ? 'disabled' : ''}>${worn ? 'TAKE OFF' : owned ? 'WEAR' : a.price === 0 ? 'FREE' : `BUY ${a.price}`}</button>`;
+    card.querySelector('button').addEventListener('click', () => {
+      if (!owned) buy(a.id) && toggleEquip(a.id);
+      else toggleEquip(a.id);
+      renderStore();
+    });
+    grid.appendChild(card);
+  });
+}
+
+function openStore() {
+  storeCanvasInit();
+  renderStore();
+  if (!store.raf) store.raf = requestAnimationFrame(storeFrame);
+}
+document.querySelectorAll('#st-tabs .gal-chip').forEach((chip) =>
+  chip.addEventListener('click', () => {
+    store.slot = chip.dataset.slot;
+    document.querySelectorAll('#st-tabs .gal-chip').forEach((c) => c.classList.toggle('on', c === chip));
+    renderStore();
+  })
+);
+$('#store-sub').textContent = `${getCoins()} coins: headbands, hats and glasses`;

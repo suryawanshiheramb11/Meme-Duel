@@ -40,12 +40,24 @@ export function randomCode(length = 5) {
 export const cleanCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 
 // A custom broker can be supplied as ?signal=host:port (handy for self-hosting `peerjs-server`)
+// STUN finds each browser's public address; the TURN relay is the fallback for networks that block
+// direct connections (it is a free community relay, so it is a best effort, not a guarantee).
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:global.stun.twilio.com:3478' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+];
+
 function peerOptions() {
+  const config = { iceServers: ICE_SERVERS };
   const custom = new URLSearchParams(location.search).get('signal');
-  if (!custom) return {};
+  if (!custom) return { config };
   const [host, port] = custom.split(':');
   const local = /^(localhost|127\.)/.test(host);
-  return { host, port: Number(port) || (local ? 9000 : 443), path: '/', secure: !local };
+  return { host, port: Number(port) || (local ? 9000 : 443), path: '/', secure: !local, config };
 }
 
 function openPeer(id) {
@@ -151,7 +163,7 @@ export class NetSession {
 function handshakeAsHost(conn) {
   return new Promise((resolve, reject) => {
     conn.send({ t: 'welcome', v: PROTOCOL });
-    const timer = setTimeout(() => reject(new Error('no hello')), 4000);
+    const timer = setTimeout(() => reject(new Error('no hello')), 15000);
     conn.on('data', function once(msg) {
       if (msg && msg.t === 'hello' && msg.v === PROTOCOL) {
         clearTimeout(timer);
@@ -162,7 +174,7 @@ function handshakeAsHost(conn) {
   });
 }
 
-function handshakeAsGuest(conn, timeoutMs = 3500) {
+function handshakeAsGuest(conn, timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('no welcome')), timeoutMs);
     conn.on('data', function once(msg) {
@@ -180,6 +192,7 @@ function handshakeAsGuest(conn, timeoutMs = 3500) {
 
 // Try to connect to a specific waiting host. Resolves with the open connection, or null.
 function tryJoin(peer, targetId, timeoutMs) {
+  peer.joinWhy = null; // why the last attempt failed: 'unavailable' (nobody there) or 'connect' (found, could not link)
   return new Promise((resolve) => {
     const conn = peer.destroyed || peer.disconnected ? null : peer.connect(targetId, { reliable: true });
     if (!conn) return resolve(null);
@@ -198,17 +211,29 @@ function tryJoin(peer, targetId, timeoutMs) {
       }
       resolve(value);
     };
-    const timer = setTimeout(() => finish(null), timeoutMs);
+    const timer = setTimeout(() => {
+      peer.joinWhy = peer.joinWhy || 'connect';
+      finish(null);
+    }, timeoutMs);
     const onPeerError = (err) => {
-      if (err && err.type === 'peer-unavailable') finish(null); // nobody is registered under that id
+      if (err && err.type === 'peer-unavailable') {
+        peer.joinWhy = 'unavailable'; // nobody is registered under that id
+        finish(null);
+      }
     };
     peer.on('error', onPeerError);
     conn.on('open', () => {
       handshakeAsGuest(conn, timeoutMs)
         .then(() => finish(conn))
-        .catch(() => finish(null));
+        .catch(() => {
+          peer.joinWhy = 'connect';
+          finish(null);
+        });
     });
-    conn.on('error', () => finish(null));
+    conn.on('error', () => {
+      peer.joinWhy = 'connect';
+      finish(null);
+    });
   });
 }
 
@@ -269,9 +294,13 @@ export async function joinRoom(rawCode) {
   if (code.length < 4) throw Object.assign(new Error('Enter the room code.'), { code: 'bad-code' });
   await loadPeerLib();
   const peer = await openPeer();
-  const conn = await tryJoin(peer, `md-room-${code}`, 7000);
+  const conn = await tryJoin(peer, `md-room-${code}`, 16000);
   if (!conn) {
+    const why = peer.joinWhy;
     peer.destroy();
+    if (why === 'connect') {
+      throw Object.assign(new Error(`Found room ${code} but could not connect to its host. A firewall or strict network may be blocking the link; try another network or ask for a new room.`), { code: 'connect-failed' });
+    }
     throw Object.assign(new Error(`No room "${code}" is open. Check the code, or ask your friend to make a new room.`), { code: 'room-not-found' });
   }
   return new NetSession(conn, [peer], 'guest');
@@ -315,7 +344,7 @@ export async function quickMatch({ onStatus, isCancelled }) {
       for (let s = 0; s < limit; s++) {
         if (isCancelled()) throw Object.assign(new Error('cancelled'), { code: 'cancelled' });
         onStatus && onStatus('looking');
-        const conn = await tryJoin(guestPeer, `${POOL}-${s}`, 2600);
+        const conn = await tryJoin(guestPeer, `${POOL}-${s}`, 6000);
         if (conn) {
           const session = new NetSession(conn, [guestPeer, hostPeer].filter(Boolean), 'guest');
           return session;

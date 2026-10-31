@@ -92,12 +92,17 @@ Win the deciding round by KO and the screen says **FINISH HIM!**. You have six s
 
 ---
 
+## The store
+
+**Store** on the landing page sells accessories for your fighter: headbands, hats, a crown, a halo, headphones, shades, round glasses, a monocle, an eye patch and a mustache (one head item and one face item at a time). You start with 150 coins and the Red Headband. Matches pay coins: 15 per round won, 60 for winning the match (20 for losing), and 40 for a fatality. What you buy is saved in your browser, worn in every fight, and shown to your online opponent.
+
 ## Playing online
 
 **Play Online** on the landing page opens the lobby:
 
 - **Quick Match** pairs you with the next person who is searching. Two players looking at the same time find each other in a few seconds.
-- **Create Room** gives a five-letter code (and a copyable invite link, `?room=CODE`). A friend types it under **Join Room**, or just opens the link.
+- **Create Room** gives a five-letter code (and a copyable invite link, `?room=CODE`) and puts you in the room straight away. A friend types the code under **Join Room**, or just opens the link, and joins you there.
+- Everyone, room or quick match, lands in the same **ready-up room**: you see who is in, each of you presses **READY** (or R), and the fight starts when both are ready.
 
 Online duels are human against human: no bot, no secret moves, even health, same rounds and fatality. Hits are decided by the player being hit (so your own guard and dash always count), and the host keeps the clock.
 

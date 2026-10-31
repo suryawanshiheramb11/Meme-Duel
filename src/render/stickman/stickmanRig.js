@@ -356,6 +356,185 @@ function drawEnemyGear(g, variant, time) {
   }
 }
 
+// ---- store accessories, drawn in the head's local frame (origin = head centre, up = -y, forward = +x)
+function drawHeadGear(g, id, time) {
+  const H = L.head;
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  g.strokeStyle = '#0b0b0e';
+  g.lineWidth = 4;
+  if (id === 'headband' || id === 'ninja') {
+    const col = id === 'ninja' ? '#14141a' : '#d6232a';
+    g.fillStyle = col;
+    g.fillRect(-H, -17, H * 2, 9);
+    g.strokeRect(-H, -17, H * 2, 9);
+    const wave = Math.sin(time * 10) * 5;
+    g.beginPath();
+    g.moveTo(-H, -13);
+    g.quadraticCurveTo(-H - 22, -13 + wave, -H - 38, -4 + wave * 1.6);
+    g.moveTo(-H, -11);
+    g.quadraticCurveTo(-H - 20, -4 - wave, -H - 34, 8 - wave * 1.4);
+    g.lineWidth = 5;
+    g.strokeStyle = id === 'ninja' ? '#14141a' : '#d6232a';
+    g.stroke();
+    if (id === 'ninja') {
+      g.fillStyle = '#ecedf1';
+      g.fillRect(6, -15, 9, 5);
+    }
+  } else if (id === 'crown') {
+    g.fillStyle = '#ffd23a';
+    g.beginPath();
+    g.moveTo(-17, -H + 3);
+    g.lineTo(-19, -H - 20);
+    g.lineTo(-9, -H - 8);
+    g.lineTo(0, -H - 24);
+    g.lineTo(9, -H - 8);
+    g.lineTo(19, -H - 20);
+    g.lineTo(17, -H + 3);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#d6232a';
+    g.beginPath();
+    g.arc(0, -H - 3, 3.5, 0, Math.PI * 2);
+    g.fill();
+  } else if (id === 'tophat') {
+    g.fillStyle = '#14141a';
+    g.beginPath();
+    g.ellipse(0, -H + 3, 31, 7, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.fillRect(-17, -H - 33, 34, 36);
+    g.strokeRect(-17, -H - 33, 34, 36);
+    g.fillStyle = '#d6232a';
+    g.fillRect(-17, -H - 8, 34, 8);
+  } else if (id === 'party') {
+    g.fillStyle = '#ffd23a';
+    g.beginPath();
+    g.moveTo(-15, -H + 4);
+    g.lineTo(2, -H - 38);
+    g.lineTo(17, -H + 2);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#d6232a';
+    g.beginPath();
+    g.moveTo(-8, -H - 10);
+    g.lineTo(10, -H - 12);
+    g.lineTo(13, -H - 2);
+    g.lineTo(-11, -H);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#ecedf1';
+    g.beginPath();
+    g.arc(2, -H - 40, 5, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  } else if (id === 'cowboy') {
+    g.fillStyle = '#8a5a2b';
+    g.beginPath();
+    g.ellipse(0, -H + 4, 42, 8, -0.06, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.beginPath();
+    g.moveTo(-17, -H + 3);
+    g.lineTo(-13, -H - 18);
+    g.quadraticCurveTo(0, -H - 12, 13, -H - 18);
+    g.lineTo(17, -H + 3);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#14141a';
+    g.fillRect(-16, -H - 4, 32, 5);
+  } else if (id === 'halo') {
+    g.strokeStyle = '#ffd23a';
+    g.lineWidth = 6;
+    const bob = Math.sin(time * 4) * 3;
+    g.beginPath();
+    g.ellipse(0, -H - 14 + bob, 21, 6, 0, 0, Math.PI * 2);
+    g.stroke();
+    g.strokeStyle = '#0b0b0e';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.ellipse(0, -H - 14 + bob, 24, 8.5, 0, 0, Math.PI * 2);
+    g.stroke();
+  } else if (id === 'headphones') {
+    g.strokeStyle = '#14141a';
+    g.lineWidth = 7;
+    g.beginPath();
+    g.arc(-2, 0, H + 3, Math.PI * 1.02, Math.PI * 1.98);
+    g.stroke();
+    g.fillStyle = '#d6232a';
+    g.strokeStyle = '#0b0b0e';
+    g.lineWidth = 3.5;
+    g.beginPath();
+    g.ellipse(-4, 2, 9, 12, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  }
+}
+
+function drawFaceGear(g, id) {
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  g.strokeStyle = '#0b0b0e';
+  g.fillStyle = '#0b0b0e';
+  g.lineWidth = 3.5;
+  if (id === 'shades') {
+    g.fillRect(-2, -11, 30, 13);
+    g.fillStyle = 'rgba(255,255,255,0.7)';
+    g.fillRect(2, -9, 6, 3);
+    g.fillRect(17, -9, 6, 3);
+    g.fillStyle = '#0b0b0e';
+    g.fillRect(-L.head, -9, L.head - 2, 4);
+  } else if (id === 'nerd') {
+    g.fillStyle = 'rgba(255,255,255,0.55)';
+    [7, 21].forEach((x) => {
+      g.beginPath();
+      g.arc(x, -4, 7.5, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    });
+    g.beginPath();
+    g.moveTo(14.5, -4);
+    g.lineTo(13.5, -4);
+    g.moveTo(-0.5, -4);
+    g.lineTo(-L.head, -8);
+    g.stroke();
+  } else if (id === 'monocle') {
+    g.strokeStyle = '#d4a017';
+    g.lineWidth = 3.5;
+    g.beginPath();
+    g.arc(21, -4, 9, 0, Math.PI * 2);
+    g.stroke();
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(21, 5);
+    g.quadraticCurveTo(24, 22, 14, 40);
+    g.stroke();
+  } else if (id === 'eyepatch') {
+    g.beginPath();
+    g.arc(8, -4, 8.5, 0, Math.PI * 2);
+    g.fill();
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(0, -9);
+    g.lineTo(-L.head + 2, -18);
+    g.moveTo(15, 0);
+    g.lineTo(26, 6);
+    g.stroke();
+  } else if (id === 'mustache') {
+    g.beginPath();
+    g.moveTo(4, 9);
+    g.quadraticCurveTo(10, 3, 16, 8);
+    g.quadraticCurveTo(22, 3, 29, 10);
+    g.quadraticCurveTo(22, 14, 16, 11);
+    g.quadraticCurveTo(10, 15, 4, 9);
+    g.closePath();
+    g.fill();
+  }
+}
+
 function drawCap(g, color) {
   g.fillStyle = color || '#ffffff';
   g.strokeStyle = '#0b0b0e';
@@ -440,7 +619,10 @@ export function drawStickman(canvas, poseState, opts, makeCanvas, scratch) {
   const glow = opts.glow !== false;
   if (opts.isHero && style) drawHair(g, style, opts.time, opts.bigHair, glow);
   drawFace(g, { isHero: opts.isHero, variant: opts.variant, face: opts.face, style, time: opts.time, glow });
-  if (opts.isHero && !style) drawCap(g, opts.capColor);
+  const gear = opts.gear;
+  if (opts.isHero && !style && !(gear && gear.head)) drawCap(g, opts.capColor);
+  if (gear && gear.head) drawHeadGear(g, gear.head, opts.time);
+  if (gear && gear.face) drawFaceGear(g, gear.face);
   g.restore();
 
   // guard shield: a glowing arc held out in front

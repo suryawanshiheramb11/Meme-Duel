@@ -398,6 +398,10 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   const manifest3 = JSON.parse(rd('assets/memes/manifest.json')).clips;
   assert(!manifest3.some((c) => /gareeb/i.test(c.title + c.phrase)), 'The "Mein Gareeb hun" meme is gone');
   assert(manifest3.some((c) => c.phrase === 'EMOTIONAL DAMAGE' && fs.existsSync(path.join(ROOT, 'assets/memes', c.file))), 'Emotional Damage is in the meme set');
+  const lockerSrc = rd('src/core/locker.js');
+  assert(/ACCESSORIES/.test(lockerSrc) && /headband/.test(lockerSrc) && /crown/.test(lockerSrc) && /export function buy/.test(lockerSrc), 'The store sells accessories (headband, crown, hats, glasses...)');
+  assert(/drawHeadGear/.test(rd('src/render/stickman/stickmanRig.js')) && /currentGear/.test(rd('src/core/app.js')) && /t: 'gear'/.test(vsSrc), 'Equipped gear is drawn on your fighter and shown to your online opponent');
+  assert(/rdy/.test(rd('src/ui/onlineLobby.js')) && /ICE_SERVERS/.test(netSrc), 'Online rooms have a ready-up lobby and a TURN fallback');
   console.log('');
 
 console.log('\n====================================================');
