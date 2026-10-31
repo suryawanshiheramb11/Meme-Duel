@@ -343,3 +343,5 @@ kbd.key {
 #dlg-how table { margin: 0; border-collapse: collapse; }
 #dlg-how td { padding: 0 16px 0 0; height: 32px; line-height: 32px; border: 0; vertical-align: top; }
 #dlg-how kbd.key { line-height: 20px; vertical-align: 2px; margin-right: 4px; }
+/* lift the rules so each line of text rests on one, like handwriting */
+#dlg-how .ld-body { background-position: 0 -7px; }
