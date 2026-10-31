@@ -2,6 +2,7 @@
 // Runs everything that happens *between* keystrokes: the enemy walking in and fighting back,
 // fighters facing each other, the hero hovering during air juggles, afterimage trails,
 // KO / respawn, and the camera focus point.
+import { buffValue, botBuffWeights, DURATION as BUFF_SECONDS } from './buffs.js';
 import { ATTACKS, DIFFICULTIES, DEFAULT_DIFFICULTY, PERSONALITIES, withPersonality, randBetween, pickWeighted, saveDifficulty } from './difficulty.js';
 
 const FIGHT_GAP = 1.05; // preferred distance between fighters
@@ -24,6 +25,8 @@ export class FightDirector {
     enemy.maxHealth = enemy.health = Math.round(100 * HEALTH_SCALE);
     this.enemyDownTimer = 0;
     this.heroDownTimer = 0;
+    this.tactical = false; // tactical mode: the bot plays attack / defense / health buffs too
+    this.botBuffs = { attack: 0, defense: 0, attackVal: 0, defenseVal: 0, wait: 8 };
     this.attackCooldown = 3;
     this.punishPending = false;
     this.attack = null; // { type, spec, t, windup, struck, second, double, punish }
@@ -125,6 +128,48 @@ export class FightDirector {
     this.attackCooldown = Math.min(this.attackCooldown, 0.12);
   }
 
+  // ------------------------------------------------------------- tactical mode: the bot's buffs
+  botAttackMul() {
+    return this.tactical && this.botBuffs.attack > 0 ? 1 + this.botBuffs.attackVal : 1;
+  }
+
+  /** Incoming damage on the bot after its defense buff (the app wraps enemy.takeHit with this). */
+  botDefenseMul() {
+    return this.tactical && this.botBuffs.defense > 0 ? 1 - this.botBuffs.defenseVal : 1;
+  }
+
+  updateBotBuffs(dt) {
+    const b = this.botBuffs;
+    if (b.attack > 0) b.attack -= dt;
+    if (b.defense > 0) b.defense -= dt;
+    const e = this.enemy;
+    if (e.health <= 0 || this.entering) return;
+    b.wait -= dt;
+    if (b.wait > 0) return;
+    // Read the fight: how hurt each side is, and whether the player just powered up
+    const botFrac = e.health / e.maxHealth;
+    const heroFrac = this.hero.health / this.hero.maxHealth;
+    const kind = pickWeighted(botBuffWeights(botFrac, heroFrac, this.combo.buffs.attack > 0));
+    const value = buffValue(kind, botFrac, heroFrac);
+    const pct = Math.round(value * 100);
+    if (kind === 'attack') {
+      b.attack = BUFF_SECONDS;
+      b.attackVal = value;
+    } else if (kind === 'defense') {
+      b.defense = BUFF_SECONDS;
+      b.defenseVal = value;
+    } else {
+      e.health = Math.min(e.maxHealth, e.health + Math.round(e.maxHealth * value));
+    }
+    const label = kind === 'health' ? `FOE HEALS ${pct}%` : kind === 'attack' ? `FOE ATTACK +${pct}%` : `FOE DEFENSE -${pct}%`;
+    this.fx.floatText(label, e.x, 3.3, { color: kind === 'attack' ? '#ff9a3c' : kind === 'defense' ? '#ecedf1' : '#7dff9a', size: 30, cls: 'fx-pop' });
+    this.fx.ringBurst(e.x, 1.3, 3, kind === 'attack' ? 0xff9a3c : kind === 'defense' ? 0xecedf1 : 0x7dff9a, 0.4);
+    this.audio.playSound('streak_fire');
+    // harder bots play a card more often
+    const gap = { easy: [16, 22], medium: [11, 16], hard: [7, 11] }[this.diffKey] || [12, 18];
+    b.wait = randBetween(gap);
+  }
+
   avoidSpecial(move) {
     const e = this.enemy;
     if (this.versus || e.health <= 0 || this.entering || this.paused) return;
@@ -196,6 +241,7 @@ export class FightDirector {
     if (!this.versus) {
       this.updateHabits(dt);
       this.updateEnemy(dt);
+      if (this.tactical && !this.paused) this.updateBotBuffs(dt);
     }
     this.updateHero(dt);
     this.updateTrails(dt);
@@ -425,7 +471,7 @@ export class FightDirector {
       return;
     }
 
-    let dmg = (this.diff.damage * spec.dmg + Math.min(4, this.combo.kills * 0.6)) * (this.enraged ? 1.25 : 1);
+    let dmg = (this.diff.damage * spec.dmg + Math.min(4, this.combo.kills * 0.6)) * (this.enraged ? 1.25 : 1) * this.botAttackMul();
     let knock = spec.knock;
     let stun = spec.stun;
     const blocked = h.guarding && !spec.unblockable;
@@ -500,7 +546,7 @@ export class FightDirector {
       return;
     }
     const blocked = h.guarding;
-    let dmg = (this.diff.damage + Math.min(4, this.combo.kills * 0.6)) * (this.enraged ? 1.25 : 1);
+    let dmg = (this.diff.damage + Math.min(4, this.combo.kills * 0.6)) * (this.enraged ? 1.25 : 1) * this.botAttackMul();
     if (blocked) dmg *= 0.3;
     if (this.diff.mercy) dmg = Math.min(dmg, Math.max(0, h.health - 5));
     const res = h.takeHit(dmg, { knock: blocked ? 0.05 : 0.5, stun: blocked ? 0 : 0.3, quiet: blocked, stagger: !blocked });
@@ -573,6 +619,8 @@ export class FightDirector {
     this.combo.bulletTimer = 0;
     this.combo.stylePoints = 0;
     this.combo.surgeTimer = 0;
+    this.combo.buffs = { attack: 0, defense: 0, attackVal: 0, defenseVal: 0 };
+    this.botBuffs = { attack: 0, defense: 0, attackVal: 0, defenseVal: 0, wait: 8 };
   }
 
   respawnEnemy() {

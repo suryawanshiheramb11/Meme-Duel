@@ -42,7 +42,7 @@ Node 18 or newer is enough to serve it. The game is plain static files: there is
 | Command | What it does |
 | :--- | :--- |
 | `npm run serve` | Serves the game on port 3000. `PORT=4000 npm run serve` changes the port; `ROOT=web-dist npm run serve` previews the hosted build. |
-| `npm test` | Runs the full check suite (174 checks). See [Tests](#tests). |
+| `npm test` | Runs the full check suite (175 checks). See [Tests](#tests). |
 | `npm run build:web` | Builds the slim copy that gets hosted into `web-dist/`. See [Hosting](#hosting-on-vercel). |
 | `npm run fetch:memes` | Downloads, crops, compresses and tags the meme clips. Needs `ffmpeg`. See [Customising](#customising-the-game). |
 | `npm run generate:arenas` | Repaints the nine arena backgrounds. See [Customising](#customising-the-game). |
@@ -96,11 +96,15 @@ Win the deciding round by KO and the screen says **FINISH HIM!**. You have six s
 
 A separate mode on the landing page. Instead of one phrase at a time, **three memes appear side by side**, each carrying a different buff:
 
-| Card | Buff |
-| :--- | :--- |
-| **Attack** | +50% damage for 12 seconds (and the meme's special move fires) |
-| **Defense** | 45% less damage taken for 12 seconds |
-| **Health** | heals 30% of your health |
+Buff strength depends on **your health and your opponent's health**, and each card states what it is worth right now (it changes live as the fight does). A **BEST NOW** tag marks the smartest pick; below 30% health, healing is always the best pick.
+
+| Card | Buff | Gets stronger when |
+| :--- | :--- | :--- |
+| **Attack** | +35% to +90% damage for 12 s (and the meme's special move fires) | the opponent is healthy, and you are behind |
+| **Defense** | 30% to 65% less damage taken for 12 s | you are hurt, and the opponent is strong |
+| **Health** | heals 15% to 50% of your health | you are low on health |
+
+**The bot plays the same cards.** Every few seconds (Easy 16-22 s, Medium 11-16 s, Hard 7-11 s) it reads both health bars and picks a buff: it heals when it is hurt, defends when you just powered up, and goes for attack when you are weak. Its active buffs show as chips under the health bars, and its hits and defense are changed by them exactly like yours.
 
 The three phrases always start with different letters, so **typing the first letter picks that meme** (the other two fade), and you keep typing its phrase. Finish it to get the buff, and a fresh three appear. Active buffs show as chips under the health bars. It is a solo fight against the bot, with the same rounds, arenas and store gear as Play vs Bot.
 
@@ -431,7 +435,7 @@ test/
 
 ## Tests
 
-`npm test` runs 174 checks in a few seconds (it also rebuilds `web-dist/`). They cover:
+`npm test` runs 175 checks in a few seconds (it also rebuilds `web-dist/`). They cover:
 
 - required files, the arena images (all 1920×1080) and audio assets;
 - prompt logic: typing, accuracy, word and sentence events, queue order;

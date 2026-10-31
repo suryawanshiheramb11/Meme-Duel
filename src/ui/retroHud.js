@@ -1,3 +1,4 @@
+import { buffValue, describeBuff } from '../combat/buffs.js';
 // Keyboard Warrior Stickman - Retro Steam Game HUD & Floating 3D/2.5D Prompt Overlay
 import { FORM_LABELS, FORM_COLORS } from '../render/effects/effectsManager.js';
 
@@ -136,6 +137,8 @@ export class RetroHud {
   }
 
   updateBars(hero, enemy, combo, director) {
+    this.director = director;
+    this.refreshTacticalValues(hero, enemy);
     const hw = `${Math.max(0, (hero.health / hero.maxHealth) * 100)}%`;
     const ew = `${Math.max(0, (enemy.health / enemy.maxHealth) * 100)}%`;
     this.heroHp.style.width = hw;
@@ -219,11 +222,7 @@ export class RetroHud {
     const key = p.choices.map((c) => c.phrase).join('|') + '|' + (p.chosen ? p.chosen.phrase : '-');
     if (key === this.lastTacKey) return;
     this.lastTacKey = key;
-    const BUFF = {
-      attack: ['ATTACK', '+50% damage for 12 s'],
-      defense: ['DEFENSE', '-45% damage taken for 12 s'],
-      health: ['HEALTH', 'Heal 30% of your health']
-    };
+    const BUFF = { attack: ['ATTACK', ''], defense: ['DEFENSE', ''], health: ['HEALTH', ''] };
     this.tacticalEl.innerHTML = p.choices
       .map((c) => {
         const state = p.chosen ? (p.chosen === c ? 'picked' : 'dim') : '';
@@ -233,21 +232,44 @@ export class RetroHud {
         return `<div class="tc tc-${c.buff} ${state}">
           ${thumb}
           <span class="tc-buff">${BUFF[c.buff][0]}</span>
-          <span class="tc-eff">${BUFF[c.buff][1]}</span>
+          <span class="tc-eff" data-buff="${c.buff}">${BUFF[c.buff][1]}</span>
           <span class="tc-phrase"><b class="tc-first"><u>${first[0]}</u>${first.slice(1)}</b>${rest}</span>
         </div>`;
       })
       .join('');
   }
 
-  updateBuffs(combo) {
+  // Each card states what its buff is worth right now, so the best pick changes as the fight does
+  refreshTacticalValues(hero, enemy) {
+    if (this.tacticalEl.hidden) return;
+    const self = hero.health / hero.maxHealth;
+    const foe = enemy.health / enemy.maxHealth;
+    // nearly dead: healing is always the smart pick; otherwise the biggest effect wins
+    const best = self < 0.3 ? 'health' : ['attack', 'defense', 'health'].reduce((a, k) => (buffValue(k, self, foe) * (k === 'health' ? 1.4 : 1) > buffValue(a, self, foe) * (a === 'health' ? 1.4 : 1) ? k : a));
+    this.tacticalEl.querySelectorAll('.tc-eff').forEach((el) => {
+      const kind = el.dataset.buff;
+      const text = describeBuff(kind, buffValue(kind, self, foe));
+      if (el.textContent !== text) el.textContent = text;
+    });
+    this.tacticalEl.querySelectorAll('.tc').forEach((card) => card.classList.toggle('best', !!best && card.classList.contains(`tc-${best}`) && !card.classList.contains('picked') && !card.classList.contains('dim')));
+  }
+
+  updateBuffs(combo, director) {
+    const fb = director && director.tactical ? director.botBuffs : null;
+    const fa = fb ? Math.max(0, Math.ceil(fb.attack)) : 0;
+    const fd = fb ? Math.max(0, Math.ceil(fb.defense)) : 0;
     const a = Math.max(0, Math.ceil(combo.buffs.attack));
     const d = Math.max(0, Math.ceil(combo.buffs.defense));
-    const key = `${a}|${d}`;
+    const av = Math.round(combo.buffs.attackVal * 100);
+    const dv = Math.round(combo.buffs.defenseVal * 100);
+    const key = `${a}|${d}|${fa}|${fd}`;
     if (key === this.lastBuffKey) return;
     this.lastBuffKey = key;
     this.buffChips.innerHTML =
-      (a ? `<span class="bc bc-attack">ATTACK UP ${a}s</span>` : '') + (d ? `<span class="bc bc-defense">DEFENSE UP ${d}s</span>` : '');
+      (a ? `<span class="bc bc-attack">ATTACK +${av}% ${a}s</span>` : '') +
+      (d ? `<span class="bc bc-defense">DEFENSE -${dv}% ${d}s</span>` : '') +
+      (fa ? `<span class="bc bc-foe">FOE ATTACK +${Math.round(fb.attackVal * 100)}% ${fa}s</span>` : '') +
+      (fd ? `<span class="bc bc-foe">FOE DEFENSE -${Math.round(fb.defenseVal * 100)}% ${fd}s</span>` : '');
   }
 
   renderQueue(p) {
@@ -284,7 +306,7 @@ export class RetroHud {
   }
 
   updateMetrics(promptManager, comboEngine) {
-    this.updateBuffs(comboEngine);
+    this.updateBuffs(comboEngine, this.director);
     // Bottom-Left Steam HUD
     this.goodEl.textContent = promptManager.goodCount;
     this.missEl.textContent = promptManager.missCount;

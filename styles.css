@@ -967,3 +967,8 @@ body.tactical #prompt-text-display { font-size: clamp(22px, 3vw, 42px); }
 .bc { padding: 2px 10px 0; font-family: var(--font-display); font-size: 18px; letter-spacing: 2px; color: #08080b; box-shadow: 3px 3px 0 #000; }
 .bc-attack { background: #ff9a3c; }
 .bc-defense { background: #ecedf1; }
+
+.bc-foe { background: #08080b; color: #ffd23a; }
+.tc.best { outline: 3px solid #ffd23a; outline-offset: 2px; }
+.tc.best::after { content: 'BEST NOW'; position: absolute; top: -9px; right: 8px; padding: 1px 6px 0; font-family: var(--font-display); font-size: 14px; letter-spacing: 2px; background: #ffd23a; color: #08080b; }
+#buff-chips { flex-wrap: wrap; justify-content: center; max-width: 90vw; }

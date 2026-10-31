@@ -101,7 +101,7 @@ export class App {
         const choice = this.prompt.completedChoice;
         if (this.prompt.tactical && choice) {
           // tactical: the card's buff, plus the meme; only the attack card also fires the special move
-          this.combo.applyBuff(choice.buff, this.hero);
+          this.combo.applyBuff(choice.buff, this.hero, this.enemy);
           if (choice.buff === 'attack') this.combo.triggerSpecial(this.hero, this.enemy, item);
           else if (item.clip) this.memes.playClip(item.clip, { side: 'left', priority: 3, caption: item.phrase });
           return;
@@ -163,7 +163,11 @@ export class App {
       this.prompt.setTactical(true);
       this.hud.updatePrompt(this.prompt);
       const takeHit = this.hero.takeHit.bind(this.hero);
-      this.hero.takeHit = (damage, opts) => takeHit(this.combo.buffs.defense > 0 ? damage * 0.55 : damage, opts);
+      this.hero.takeHit = (damage, opts) => takeHit(this.combo.buffs.defense > 0 ? damage * (1 - this.combo.buffs.defenseVal) : damage, opts);
+      // the bot plays the same three buffs, chosen by how both fighters are doing
+      this.director.tactical = true;
+      const botHit = this.enemy.takeHit.bind(this.enemy);
+      this.enemy.takeHit = (damage, opts) => botHit(damage * this.director.botDefenseMul(), opts);
     }
 
     // Rounds: first to two round wins

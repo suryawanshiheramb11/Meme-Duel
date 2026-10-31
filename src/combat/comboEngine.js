@@ -19,6 +19,8 @@ const VIGNETTE = {
   ui: ['rgba(232,240,255,0.5)', 1]
 };
 
+import { buffValue, DURATION } from './buffs.js';
+
 export class ComboEngine {
   constructor(audioSystem, arenaManager, effects) {
     this.audio = audioSystem;
@@ -78,7 +80,7 @@ export class ComboEngine {
     this.foundSecrets = loadFound();
     this.onSecretFound = null;
     this.bulletTimer = 0;
-    this.buffs = { attack: 0, defense: 0 }; // seconds left of each tactical-mode buff
+    this.buffs = { attack: 0, defense: 0, attackVal: 0, defenseVal: 0 }; // seconds left and strength of each tactical-mode buff
     this.memes = null; // meme reaction player, set by the app
     this.difficulty = null; // current bot level table, set by the fight director
     this.difficultyKey = 'medium';
@@ -105,7 +107,7 @@ export class ComboEngine {
   damageMultiplier() {
     // Holding guard trades offence for safety: you hit 40% softer
     const dazed = this.enemy && this.enemy.dazedUntil > performance.now() ? 1.5 : 1; // "look behind you" opening
-    const buffed = this.buffs.attack > 0 ? 1.5 : 1; // tactical mode: attack buff
+    const buffed = this.buffs.attack > 0 ? 1 + this.buffs.attackVal : 1; // tactical mode: attack buff
     return (this.isRageMode ? 1.6 : 1) * (FORM_DAMAGE[this.form] || 1) * (this.hero && this.hero.guarding ? 0.6 : 1) * dazed * buffed;
   }
 
@@ -604,20 +606,25 @@ export class ComboEngine {
   }
 
   // ------------------------------------------------------------- tactical buffs
-  /** kind: 'attack' | 'defense' | 'health' */
-  applyBuff(kind, hero) {
+  /** kind: 'attack' | 'defense' | 'health'. The strength depends on both fighters' health (see buffs.js). */
+  applyBuff(kind, hero, enemy) {
     if (!hero) return;
-    const DURATION = 12;
+    const self = hero.health / hero.maxHealth;
+    const foe = enemy ? enemy.health / enemy.maxHealth : 1;
+    const value = buffValue(kind, self, foe);
+    const pct = Math.round(value * 100);
     if (kind === 'attack') {
       this.buffs.attack = DURATION;
-      this.fx.floatText('ATTACK UP', hero.x, 3.3, { color: '#ff9a3c', size: 34, cls: 'fx-pop' });
+        this.buffs.attackVal = value;
+      this.fx.floatText(`ATTACK +${pct}%`, hero.x, 3.3, { color: '#ff9a3c', size: 34, cls: 'fx-pop' });
       this.fx.ringBurst(hero.x, 1.3, 3, 0xff9a3c, 0.4);
     } else if (kind === 'defense') {
       this.buffs.defense = DURATION;
-      this.fx.floatText('DEFENSE UP', hero.x, 3.3, { color: '#ecedf1', size: 34, cls: 'fx-pop' });
+      this.buffs.defenseVal = value;
+      this.fx.floatText(`DEFENSE -${pct}%`, hero.x, 3.3, { color: '#ecedf1', size: 34, cls: 'fx-pop' });
       this.fx.ringBurst(hero.x, 1.3, 3, 0xecedf1, 0.4);
     } else if (kind === 'health') {
-      const heal = Math.round(hero.maxHealth * 0.3);
+      const heal = Math.round(hero.maxHealth * value);
       hero.health = Math.min(hero.maxHealth, hero.health + heal);
       this.fx.floatText(`+${heal} HEALTH`, hero.x, 3.3, { color: '#7dff9a', size: 34, cls: 'fx-pop' });
       this.fx.hitSpark(hero.x, 1.4, { size: 1.4, color: 0x7dff9a, count: 14 });
