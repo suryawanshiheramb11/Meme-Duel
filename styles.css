@@ -972,3 +972,16 @@ body.tactical #prompt-text-display { font-size: clamp(22px, 3vw, 42px); }
 .tc.best { outline: 3px solid #ffd23a; outline-offset: 2px; }
 .tc.best::after { content: 'BEST NOW'; position: absolute; top: -9px; right: 8px; padding: 1px 6px 0; font-family: var(--font-display); font-size: 14px; letter-spacing: 2px; background: #ffd23a; color: #08080b; }
 #buff-chips { flex-wrap: wrap; justify-content: center; max-width: 90vw; }
+
+
+/* Tactical cards without the picture: bigger, readable names, and the typing paper sits higher */
+#tactical-choices { gap: 16px; }
+.tc { width: clamp(172px, 19vw, 270px); min-height: clamp(120px, 17vh, 168px); padding: 10px 12px 12px; gap: 6px; }
+.tc-buff { font-size: clamp(22px, 3vh, 30px); }
+.tc-eff { font-size: clamp(11px, 1.55vh, 14px); }
+.tc-phrase { font-size: clamp(17px, 2.7vh, 26px); line-height: 1.2; letter-spacing: 0.5px; }
+body.tactical #floating-prompt-container { top: calc(112px + clamp(120px, 17vh, 168px) + 24px); }
+/* the cards are clipped, so highlights are drawn inside them */
+.tc.picked, .tc.best { outline: none; box-shadow: inset 0 0 0 4px #ffd23a; }
+.tc.best::after { top: 8px; right: 16px; font-size: 15px; }
+.tc-buff { margin-right: 70px; }

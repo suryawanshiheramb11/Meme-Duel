@@ -226,11 +226,9 @@ export class RetroHud {
     this.tacticalEl.innerHTML = p.choices
       .map((c) => {
         const state = p.chosen ? (p.chosen === c ? 'picked' : 'dim') : '';
-        const thumb = c.item.clip && c.item.clip.thumb ? `<img src="assets/memes/${c.item.clip.thumb}" alt="" />` : '<div class="tc-nothumb"></div>';
         const first = c.phrase.split(' ')[0];
         const rest = c.phrase.slice(first.length);
         return `<div class="tc tc-${c.buff} ${state}">
-          ${thumb}
           <span class="tc-buff">${BUFF[c.buff][0]}</span>
           <span class="tc-eff" data-buff="${c.buff}">${BUFF[c.buff][1]}</span>
           <span class="tc-phrase"><b class="tc-first"><u>${first[0]}</u>${first.slice(1)}</b>${rest}</span>
