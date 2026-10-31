@@ -23,12 +23,12 @@ export class RetroHud {
       <div id="fight-bars">
         <div class="bar-side hero-side">
           <div class="bar-head"><span class="bar-name">YOU</span><span id="form-chip">BASE</span></div>
-          <div class="hp-track"><div id="hero-hp-fill" class="hp-fill"></div></div>
+          <div class="hp-track"><div id="hero-hp-ghost" class="hp-ghost"></div><div id="hero-hp-fill" class="hp-fill"></div><i class="hp-ticks"></i><span id="hero-hp-num" class="hp-num"></span></div>
         </div>
         <div id="vs-badge">VS</div>
         <div class="bar-side enemy-side">
           <div class="bar-head"><span id="enemy-kos">KO 0</span><span class="bar-name" id="enemy-name">FOE #1</span></div>
-          <div class="hp-track"><div id="enemy-hp-fill" class="hp-fill"></div></div>
+          <div class="hp-track"><div id="enemy-hp-ghost" class="hp-ghost"></div><div id="enemy-hp-fill" class="hp-fill"></div><i class="hp-ticks"></i><span id="enemy-hp-num" class="hp-num"></span></div>
         </div>
       </div>
 
@@ -114,6 +114,10 @@ export class RetroHud {
     this.queueEl = document.getElementById('meme-queue');
     this.lastQueueKey = null;
     this.keyStream = document.getElementById('key-stream');
+    this.heroGhost = document.getElementById('hero-hp-ghost');
+    this.enemyGhost = document.getElementById('enemy-hp-ghost');
+    this.heroNum = document.getElementById('hero-hp-num');
+    this.enemyNum = document.getElementById('enemy-hp-num');
     this.heroHp = document.getElementById('hero-hp-fill');
     this.enemyHp = document.getElementById('enemy-hp-fill');
     this.formChip = document.getElementById('form-chip');
@@ -124,8 +128,16 @@ export class RetroHud {
   }
 
   updateBars(hero, enemy, combo, director) {
-    this.heroHp.style.width = `${Math.max(0, (hero.health / hero.maxHealth) * 100)}%`;
-    this.enemyHp.style.width = `${Math.max(0, (enemy.health / enemy.maxHealth) * 100)}%`;
+    const hw = `${Math.max(0, (hero.health / hero.maxHealth) * 100)}%`;
+    const ew = `${Math.max(0, (enemy.health / enemy.maxHealth) * 100)}%`;
+    this.heroHp.style.width = hw;
+    this.enemyHp.style.width = ew;
+    this.heroGhost.style.width = hw; // the pale trail drains behind the bar (slow transition in CSS)
+    this.enemyGhost.style.width = ew;
+    const hn = `${Math.ceil(Math.max(0, hero.health))} / ${hero.maxHealth}`;
+    const en = `${Math.ceil(Math.max(0, enemy.health))} / ${enemy.maxHealth}`;
+    if (hn !== this.lastHeroNum) this.heroNum.textContent = this.lastHeroNum = hn;
+    if (en !== this.lastEnemyNum) this.enemyNum.textContent = this.lastEnemyNum = en;
     this.heroHp.classList.toggle('low', hero.health / hero.maxHealth < 0.3);
 
     if (combo.form !== this.lastForm) {

@@ -905,3 +905,19 @@ html, body {
 .ol-foot-row { max-width: none; display: flex; gap: 12px; }
 .ol-foot-row .menu-btn { width: auto; min-width: 190px; }
 @media (max-width: 760px) { .ol-slots { grid-template-columns: 1fr; } }
+
+
+/* Health bars: segments, a draining damage trail and the exact numbers */
+.hp-track { position: relative; }
+.hp-ghost { position: absolute; left: 0; top: 0; height: 100%; width: 100%; background: #f3efe0; opacity: 0.85; transition: width 0.7s ease-out 0.35s; }
+.hp-fill { position: relative; z-index: 1; }
+.hp-ticks {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), rgba(0, 0, 0, 0.55) calc(10% - 2px) 10%);
+}
+.hp-num {
+  position: absolute; right: 8px; top: 50%; z-index: 3; transform: translateY(-50%); pointer-events: none;
+  font-family: var(--font-display); font-size: 14px; letter-spacing: 1px; line-height: 1; color: #fff; text-shadow: 0 1px 0 #000, 1px 0 0 #000, -1px 0 0 #000, 0 -1px 0 #000;
+}
+.enemy-side .hp-num { transform: translateY(-50%) scaleX(-1); right: auto; left: 8px; }
+.hp-track { height: 22px; }

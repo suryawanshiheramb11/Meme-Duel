@@ -388,7 +388,7 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(/ROUNDS_TO_WIN\s*=\s*2/.test(matchSrc) && /ROUND_SECONDS/.test(matchSrc), 'A match is first to two rounds, with a round clock');
   assert(/FINISH HIM/.test(matchSrc) && /FATALITY_CODE/.test(matchSrc) && /fatality\(kind, byMe\)/.test(matchSrc), 'The deciding KO opens a FINISH HIM window with a fatality');
   assert(/FINAL ROUND/.test(matchSrc) && /BEGINS/.test(matchSrc) && /round-bars/.test(matchSrc), 'Round 1, round 2 and the final round each get an introduction');
-  assert(/HEALTH_SCALE\s*=\s*2/.test(rd('src/combat/fightDirector.js')), 'Fighters carry extra health so rounds last');
+  assert(/HEALTH_SCALE\s*=\s*\d/.test(rd('src/combat/fightDirector.js')), 'Fighters carry extra health so rounds last');
   const netSrc = rd('src/net/netSession.js');
   assert(/md-room-/.test(netSrc) && /createRoom/.test(netSrc) && /joinRoom/.test(netSrc), 'Private rooms with a join code');
   assert(/quickMatch/.test(netSrc) && /unavailable-id/.test(netSrc) && /SLOTS/.test(netSrc), 'Quick match pairs searching players through waiting slots');

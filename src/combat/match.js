@@ -3,7 +3,7 @@ import { addCoins } from '../core/locker.js';
 // when the clock runs out and the fighter with more health left takes it. Used for both the bot
 // and online duels; online, only the host decides how a round ends and tells the guest.
 const ROUNDS_TO_WIN = 2;
-const ROUND_SECONDS = 90;
+const ROUND_SECONDS = 99;
 const INTRO_SECONDS = 7.2; // announcement, 3-2-1, FIGHT: a proper breather before every round
 const BETWEEN_SECONDS = 3.2;
 const FINISH_SECONDS = 6;

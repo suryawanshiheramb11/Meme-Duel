@@ -7,8 +7,8 @@ import { ATTACKS, DIFFICULTIES, DEFAULT_DIFFICULTY, PERSONALITIES, withPersonali
 const FIGHT_GAP = 1.05; // preferred distance between fighters
 const ENEMY_BOUND = 6.1;
 const HERO_BOUND = 5.4;
-// Fighters carry this much more health than the base 100, so a round is a real fight, not a few combos
-export const HEALTH_SCALE = 2.4;
+// Fighters carry 4x the old base health (400), so a round is a real fight, not a few combos
+export const HEALTH_SCALE = 4;
 const TINTS = { base: '#9be8ff', ssj: '#ffd23a', blue: '#4fc3ff', ui: '#e8f0ff' };
 
 export class FightDirector {
