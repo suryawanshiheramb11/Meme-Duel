@@ -124,6 +124,15 @@ export class App {
     // 8. Meme Combo Maker menu
     this.menu = new MemeComboMenu(this.container, this.arena, this.prompt, this.audio, this.combo, this.memes, this.director, this.perf);
     this.combo.onSecretFound = () => this.menu.renderSecrets();
+    // Esc pauses a solo fight completely (an online match can't be paused: the other player is live)
+    this.menu.onPause = () => {
+      this.menu.online = !!this.versus;
+      document.querySelectorAll('#game-container video').forEach((v) => v.pause());
+    };
+    this.menu.onResume = () => {
+      this.lastTime = performance.now();
+      document.querySelectorAll('#game-container video').forEach((v) => v.play && v.play().catch(() => {}));
+    };
 
     // 9. Input
     this.input = new InputManager(
@@ -200,6 +209,10 @@ export class App {
     const delta = Math.min((now - this.lastTime) / 1000, 0.05);
     this.lastTime = now;
 
+    if (this.menu.isOpen && !this.versus) {
+      this.arena.render(); // frozen: nothing advances while the pause menu is up
+      return;
+    }
 
     // Slow motion on KOs and perfect dodges; impact freeze on hits.
     let dt = delta;

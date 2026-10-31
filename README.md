@@ -272,7 +272,7 @@ Mechanical-keyboard thocks, combat hits, whooshes and fanfares, plus a music tra
 
 ## Menu and settings
 
-Press **Esc** (or click **MEME COMBO MAKER** at the top left):
+Press **Esc** to pause (a solo fight freezes completely; an online one keeps running). The pause menu has four tabs, **Fight**, **Arena**, **Moves** and **Settings**:
 
 | Section | What you can set |
 | :--- | :--- |

@@ -31,20 +31,26 @@ export class MemeComboMenu {
     this.menuRoot = document.createElement('div');
     this.menuRoot.id = 'meme-combo-menu-wrapper';
     this.menuRoot.innerHTML = `
-      <!-- Top Bar Toggle Button -->
-      <button id="toggle-menu-btn" title="Open Meme Combo Maker (ESC)">
-        <span class="icon">&#9881;</span> MEME COMBO MAKER
-      </button>
+      <div id="meme-menu-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="pm-title">
+        <div class="pm-wrap"><div class="pm-card">
+          <header class="pm-head">
+            <div>
+              <p class="pm-kicker">PAUSED</p>
+              <h2 class="pm-title" id="pm-title">MEME DUEL</h2>
+              <p class="pm-note" id="pm-note"></p>
+            </div>
+            <button id="close-menu-btn" class="pm-close" aria-label="Resume">&times;</button>
+          </header>
 
-      <!-- Full Menu Modal Overlay -->
-      <div id="meme-menu-modal" class="hidden">
-        <div class="modal-card">
-          <div class="modal-header">
-            <h2>MEME COMBO MAKER</h2>
-            <button id="close-menu-btn" class="close-x">&times;</button>
-          </div>
+          <nav class="pm-tabs" role="tablist">
+            <button class="pm-tab active" data-tab="fight" role="tab">FIGHT</button>
+            <button class="pm-tab" data-tab="arena" role="tab">ARENA</button>
+            <button class="pm-tab" data-tab="moves" role="tab">MOVES</button>
+            <button class="pm-tab" data-tab="settings" role="tab">SETTINGS</button>
+          </nav>
 
-          <div class="modal-body">
+          <div class="pm-panels">
+            <section class="pm-panel active" data-panel="fight">
             <!-- Section: Difficulty -->
             <div class="menu-section">
               <label class="section-title">BOT DIFFICULTY</label>
@@ -56,22 +62,6 @@ export class MemeComboMenu {
               <span class="tip-text" id="diff-blurb"></span>
             </div>
 
-            <!-- Section 1: Choose Arena -->
-            <div class="menu-section">
-              <label class="section-title">SELECT ARENA / STAGE</label>
-              <div class="arena-grid">
-                ${Object.entries(ARENAS)
-                  .map(
-                    ([key, cfg]) => `
-                <button class="arena-btn${key === this.arena.currentArenaKey ? ' active' : ''}" data-arena="${key}">
-                  <div class="arena-thumb" style="${cfg.file ? `background-image:url('${cfg.file}')` : `background-color:#00ff00`}"></div>
-                  <span>${cfg.name}</span>
-                </button>`
-                  )
-                  .join('')}
-              </div>
-            </div>
-
             <!-- Section: Power Form -->
             <div class="menu-section">
               <label class="section-title">POWER FORM (GLOWING HAIR &amp; AURA)</label>
@@ -81,48 +71,6 @@ export class MemeComboMenu {
                 ).join('')}
               </div>
               <span class="tip-text">Auto powers up as your style rank climbs: A = gold, SS = blue, SSS = silver. CAPS LOCK or the backtick key forces at least gold.</span>
-            </div>
-
-            <!-- Section: Secret moves codex -->
-            <div class="menu-section">
-              <label class="section-title">SECRET MOVES <span id="secret-count"></span></label>
-              <div id="secret-list" class="secret-list"></div>
-              <span class="tip-text">Four hidden moves are tapped in on the arrow keys. Find one and it's added here.</span>
-            </div>
-
-            <!-- Section: Attack guide -->
-            <div class="menu-section">
-              <label class="section-title">HOW ATTACKS WORK</label>
-              <div class="attack-guide">
-                <div><kbd>Type</kbd><span>Every correct letter throws a strike: jab, cross, punch in rotation. If you're out of reach the hero lunges in first. Every <b>4th hit in a row is a finisher kick</b> with big knockback.</span></div>
-                <div><kbd>SPACE</kbd><span><b>Air launch.</b> Uppercut sends the enemy flying and the hero floats up beside them. Keep typing to juggle, and each hit keeps them airborne.</span></div>
-                <div><kbd>ENTER</kbd><span><b>Ground slam.</b> On an airborne enemy it dives them into the floor for heavy damage, a shockwave and a crater. On the ground it's a quick sweep.</span></div>
-                <div><kbd>TAB</kbd><span><b>Dash.</b> Far away: closes the gap. Close: dodges back (or crosses over if you're cornered). Hit Tab just as the enemy swings for a <b>perfect dodge</b>, slow motion and bonus style.</span></div>
-                <div><kbd>&larr; &rarr;</kbd><span><b>Walk</b> with the arrow keys. Every letter key is for typing.</span></div>
-                <div><kbd>&uarr;</kbd><span><b>Jump.</b> Clears the bot's low sweep, and the ultra shockwave if you time it.</span></div>
-                <div><kbd>&darr;</kbd><span><b>Guard</b> (hold). Blocks most damage, but you hit 40% softer. The ultra is unblockable.</span></div>
-                <div><kbd>Bot</kbd><span>Every attack is telegraphed. <b>HEAVY!</b> is slow and hurts, <b>JUMP!</b> is a low sweep, and a red ring with <b>DODGE!</b> is the ultra: Tab-dodge it, jump it, or hit the bot to interrupt it. Harder bots also block, read your air launcher, and counter your dashes.</span></div>
-                <div><kbd>Sentence</kbd><span>Finish a sentence to charge and fire the <b>beam finisher</b>.</span></div>
-                <div><kbd>CAPS / &#96;</kbd><span><b>Rage:</b> extra damage and at least Golden Rage form.</span></div>
-                <div><kbd>Typo</kbd><span>Drops your combo and invites an enemy counter-attack. Three in a row earns an apology meme.</span></div>
-              </div>
-              <span class="tip-text">Higher style rank = more damage and a stronger form: A gold, SS blue, SSS silver.</span>
-            </div>
-
-            <!-- Section: Meme Reactions -->
-            <div class="menu-section">
-              <label class="section-title">MEME REACTIONS</label>
-              <div class="form-row" id="meme-freq-row">
-                ${[['off', 'Off'], ['low', 'Rare'], ['normal', 'Normal'], ['chaos', 'Chaos']]
-                  .map(([key, label]) => `<button class="form-btn meme-freq-btn" data-freq="${key}">${label}</button>`)
-                  .join('')}
-                <button class="form-btn" id="meme-preview-btn">&#9654; Preview one</button>
-              </div>
-              <div class="slider-row">
-                <span>Meme Volume:</span>
-                <input type="range" id="vol-meme" min="0" max="100" value="80" />
-              </div>
-              <span class="tip-text">Memes float over the head of whoever they're about and never stop the fight: KO laughs, typo apologies, power-up hype, time-skip cards when a new foe arrives.</span>
             </div>
 
             <!-- Section 2: Custom Meme Phrase -->
@@ -145,6 +93,54 @@ export class MemeComboMenu {
               </div>
             </div>
 
+            </section>
+            <section class="pm-panel" data-panel="arena">
+            <!-- Section 1: Choose Arena -->
+            <div class="menu-section">
+              <label class="section-title">SELECT ARENA / STAGE</label>
+              <div class="arena-grid">
+                ${Object.entries(ARENAS)
+                  .map(
+                    ([key, cfg]) => `
+                <button class="arena-btn${key === this.arena.currentArenaKey ? ' active' : ''}" data-arena="${key}">
+                  <div class="arena-thumb" style="${cfg.file ? `background-image:url('${cfg.file}')` : `background-color:#00ff00`}"></div>
+                  <span>${cfg.name}</span>
+                </button>`
+                  )
+                  .join('')}
+              </div>
+            </div>
+
+            </section>
+            <section class="pm-panel" data-panel="moves">
+            <!-- Section: Attack guide -->
+            <div class="menu-section">
+              <label class="section-title">HOW ATTACKS WORK</label>
+              <div class="attack-guide">
+                <div><kbd>Type</kbd><span>Every correct letter throws a strike: jab, cross, punch in rotation. If you're out of reach the hero lunges in first. Every <b>4th hit in a row is a finisher kick</b> with big knockback.</span></div>
+                <div><kbd>SPACE</kbd><span><b>Air launch.</b> Uppercut sends the enemy flying and the hero floats up beside them. Keep typing to juggle, and each hit keeps them airborne.</span></div>
+                <div><kbd>ENTER</kbd><span><b>Ground slam.</b> On an airborne enemy it dives them into the floor for heavy damage, a shockwave and a crater. On the ground it's a quick sweep.</span></div>
+                <div><kbd>TAB</kbd><span><b>Dash.</b> Far away: closes the gap. Close: dodges back (or crosses over if you're cornered). Hit Tab just as the enemy swings for a <b>perfect dodge</b>, slow motion and bonus style.</span></div>
+                <div><kbd>&larr; &rarr;</kbd><span><b>Walk</b> with the arrow keys. Every letter key is for typing.</span></div>
+                <div><kbd>&uarr;</kbd><span><b>Jump.</b> Clears the bot's low sweep, and the ultra shockwave if you time it.</span></div>
+                <div><kbd>&darr;</kbd><span><b>Guard</b> (hold). Blocks most damage, but you hit 40% softer. The ultra is unblockable.</span></div>
+                <div><kbd>Bot</kbd><span>Every attack is telegraphed. <b>HEAVY!</b> is slow and hurts, <b>JUMP!</b> is a low sweep, and a red ring with <b>DODGE!</b> is the ultra: Tab-dodge it, jump it, or hit the bot to interrupt it. Harder bots also block, read your air launcher, and counter your dashes.</span></div>
+                <div><kbd>Sentence</kbd><span>Finish a sentence to charge and fire the <b>beam finisher</b>.</span></div>
+                <div><kbd>CAPS / &#96;</kbd><span><b>Rage:</b> extra damage and at least Golden Rage form.</span></div>
+                <div><kbd>Typo</kbd><span>Drops your combo and invites an enemy counter-attack. Three in a row earns an apology meme.</span></div>
+              </div>
+              <span class="tip-text">Higher style rank = more damage and a stronger form: A gold, SS blue, SSS silver.</span>
+            </div>
+
+            <!-- Section: Secret moves codex -->
+            <div class="menu-section">
+              <label class="section-title">SECRET MOVES <span id="secret-count"></span></label>
+              <div id="secret-list" class="secret-list"></div>
+              <span class="tip-text">Four hidden moves are tapped in on the arrow keys. Find one and it's added here.</span>
+            </div>
+
+            </section>
+            <section class="pm-panel" data-panel="settings">
             <!-- Section: Graphics -->
             <div class="menu-section">
               <label class="section-title">GRAPHICS</label>
@@ -156,25 +152,45 @@ export class MemeComboMenu {
               <span class="tip-text">Auto lowers effects and resolution if your device struggles, and raises them again when it can.</span>
             </div>
 
+            <!-- Section: Meme Reactions -->
+            <div class="menu-section">
+              <label class="section-title">MEME REACTIONS</label>
+              <div class="form-row" id="meme-freq-row">
+                ${[['off', 'Off'], ['low', 'Rare'], ['normal', 'Normal'], ['chaos', 'Chaos']]
+                  .map(([key, label]) => `<button class="form-btn meme-freq-btn" data-freq="${key}">${label}</button>`)
+                  .join('')}
+                <button class="form-btn" id="meme-preview-btn">&#9654; Preview one</button>
+              </div>
+              <div class="slider-row">
+                <span>Meme volume</span>
+                <input type="range" id="vol-meme" min="0" max="100" value="80" />
+              </div>
+              <span class="tip-text">Memes float over the head of whoever they're about and never stop the fight: KO laughs, typo apologies, power-up hype, time-skip cards when a new foe arrives.</span>
+            </div>
+
             <!-- Section 3: Audio Settings -->
             <div class="menu-section">
-              <label class="section-title">AUDIO & JUICE SETTINGS</label>
+              <label class="section-title">AUDIO</label>
               <div class="slider-row">
-                <span>Mechanical Keyboard SFX:</span>
+                <span>Sound effects</span>
                 <input type="range" id="vol-sfx" min="0" max="100" value="80" />
               </div>
               <div class="slider-row">
-                <span>Music Volume:</span>
+                <span>Music</span>
                 <input type="range" id="vol-music" min="0" max="100" value="50" />
               </div>
             </div>
+            </section>
           </div>
 
-          <div class="modal-footer">
-            <span class="tip-text">Tip: Press <b>ESC</b> anytime to resume combat</span>
-            <button id="resume-game-btn" class="primary-btn">START FIGHTING</button>
-          </div>
-        </div>
+          <footer class="pm-foot">
+            <span class="tip-text">Press <b>ESC</b> to resume</span>
+            <div class="pm-actions">
+              <button id="quit-game-btn" class="menu-btn compact"><span class="mb-label">Main menu</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Q</span></button>
+              <button id="resume-game-btn" class="menu-btn compact"><span class="mb-label">Resume</span><span class="mb-sub">&nbsp;</span><span class="mb-key">Esc</span></button>
+            </div>
+          </footer>
+        </div></div>
       </div>
     `;
 
@@ -183,6 +199,8 @@ export class MemeComboMenu {
     this.modal = document.getElementById('meme-menu-modal');
     this.customInput = document.getElementById('custom-phrase-input');
     this.arenaBtns = this.menuRoot.querySelectorAll('.arena-btn');
+    this.tabs = this.menuRoot.querySelectorAll('.pm-tab');
+    this.panels = this.menuRoot.querySelectorAll('.pm-panel');
     this.phraseTags = this.menuRoot.querySelectorAll('.phrase-tag');
     this.formBtns = this.menuRoot.querySelectorAll('.form-btn[data-form]');
     this.diffBtns = this.menuRoot.querySelectorAll('.diff-btn');
@@ -192,9 +210,20 @@ export class MemeComboMenu {
 
   bindEvents() {
     // Open / Close toggles
-    document.getElementById('toggle-menu-btn').addEventListener('click', () => this.toggle());
     document.getElementById('close-menu-btn').addEventListener('click', () => this.close());
     document.getElementById('resume-game-btn').addEventListener('click', () => this.close());
+
+    // Tabs
+    this.tabs.forEach((tab) =>
+      tab.addEventListener('click', () => {
+        this.tabs.forEach((t) => t.classList.toggle('active', t === tab));
+        this.panels.forEach((p) => p.classList.toggle('active', p.dataset.panel === tab.dataset.tab));
+      })
+    );
+    document.getElementById('quit-game-btn').addEventListener('click', () => {
+      if (this.onQuit) this.onQuit();
+      location.href = location.pathname;
+    });
 
     // ESC key toggle
     window.addEventListener('keydown', (e) => {
@@ -335,12 +364,16 @@ export class MemeComboMenu {
     this.renderSecrets();
     this.isOpen = true;
     this.modal.classList.remove('hidden');
-    this.customInput.focus();
-    this.customInput.select();
+    if (this.onPause) this.onPause();
+    document.getElementById('pm-note').textContent = this.online
+      ? 'Online match: the fight keeps running while this is open.'
+      : 'The fight is frozen until you resume.';
   }
 
   close() {
+    const wasOpen = this.isOpen;
     this.isOpen = false;
     this.modal.classList.add('hidden');
+    if (wasOpen && this.onResume) this.onResume();
   }
 }
