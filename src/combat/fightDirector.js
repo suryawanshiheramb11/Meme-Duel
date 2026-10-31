@@ -7,6 +7,8 @@ import { ATTACKS, DIFFICULTIES, DEFAULT_DIFFICULTY, PERSONALITIES, withPersonali
 const FIGHT_GAP = 1.05; // preferred distance between fighters
 const ENEMY_BOUND = 6.1;
 const HERO_BOUND = 5.4;
+// Fighters carry this much more health than the base 100, so a round is a real fight, not a few combos
+export const HEALTH_SCALE = 2.4;
 const TINTS = { base: '#9be8ff', ssj: '#ffd23a', blue: '#4fc3ff', ui: '#e8f0ff' };
 
 export class FightDirector {
@@ -18,6 +20,8 @@ export class FightDirector {
     this.arena = arena;
     this.audio = audio;
 
+    hero.maxHealth = hero.health = Math.round(100 * HEALTH_SCALE);
+    enemy.maxHealth = enemy.health = Math.round(100 * HEALTH_SCALE);
     this.enemyDownTimer = 0;
     this.heroDownTimer = 0;
     this.attackCooldown = 3;
@@ -139,7 +143,7 @@ export class FightDirector {
   }
 
   scaledEnemyHealth() {
-    return Math.round((100 + this.combo.kills * 15) * this.diff.enemyHp);
+    return Math.round((100 + this.combo.kills * 15) * this.diff.enemyHp * (this.versus ? 1 : 1) * HEALTH_SCALE);
   }
 
   // A typo can invite an immediate counter, depending on the level.
@@ -150,20 +154,25 @@ export class FightDirector {
   }
 
   update(dt) {
-    if (this.paused) return;
+    if (this.paused && !this.versus) return;
     const h = this.hero;
     const e = this.enemy;
     this.sinceHeroHurt += dt;
 
     this.updateFacing();
-    this.updateHabits(dt);
-    this.updateEnemy(dt);
+    // Online duels have no bot: only facing, bounds, trails and the camera need running
+    if (!this.versus) {
+      this.updateHabits(dt);
+      this.updateEnemy(dt);
+    }
     this.updateHero(dt);
     this.updateTrails(dt);
 
     // Keep both fighters inside the arena
     h.x = Math.max(-HERO_BOUND, Math.min(HERO_BOUND, h.x));
-    if (!this.entering) {
+    if (this.versus) {
+      e.x = Math.max(-HERO_BOUND, Math.min(HERO_BOUND, e.x));
+    } else if (!this.entering) {
       if (e.x > ENEMY_BOUND) { e.x = ENEMY_BOUND; e.vx = Math.min(0, e.vx); }
       if (e.x < -ENEMY_BOUND) { e.x = -ENEMY_BOUND; e.vx = Math.max(0, e.vx); }
     }
@@ -495,6 +504,45 @@ export class FightDirector {
     if (this.memes) this.memes.trigger('rage', { priority: 3, side: 'right' });
   }
 
+  // Fresh round: both fighters at full health, back at their starting marks
+  resetRound() {
+    const h = this.hero;
+    const e = this.enemy;
+    const c = this.arena.camX || 0;
+    [h, e].forEach((f) => {
+      f.group.visible = true;
+      f.shadowMesh.visible = true;
+    });
+    h.revive();
+    h.maxHealth = Math.round(100 * HEALTH_SCALE);
+    h.health = h.maxHealth;
+    const m = this.mirror ? -1 : 1; // the online guest starts on the right
+    h.x = c - 0.55 * m;
+    h.facing = m;
+    h.invulnTimer = 0;
+    e.revive();
+    e.maxHealth = this.versus ? Math.round(100 * HEALTH_SCALE) : this.scaledEnemyHealth();
+    e.health = e.maxHealth;
+    e.x = c + 0.55 * m;
+    e.facing = -m;
+    e.form = 'base';
+    e.auraBoost = 0;
+    this.enraged = false;
+    this.entering = false;
+    this.attack = null;
+    this.queuedAttack = null;
+    this.pendingChain = 0;
+    this.enemyDownTimer = 0;
+    this.heroDownTimer = 0;
+    this.sinceHeroHurt = 99;
+    this.attackCooldown = 1.6;
+    this.resetUltraTimer();
+    this.combo.onHeroHit();
+    this.combo.bulletTimer = 0;
+    this.combo.stylePoints = 0;
+    this.combo.surgeTimer = 0;
+  }
+
   respawnEnemy() {
     const e = this.enemy;
     const h = this.hero;
@@ -539,6 +587,7 @@ export class FightDirector {
       h.isAirborne = h.y > 0.02;
     }
 
+    if (this.versus) return; // rounds, not auto-revives
     if (h.health <= 0) {
       this.heroDownTimer += dt;
       if (this.heroDownTimer > 2.2 && !h.isAirborne) {
@@ -552,7 +601,7 @@ export class FightDirector {
 
     // Slow recovery when nobody's hitting you
     if (this.sinceHeroHurt > 3 && h.health < h.maxHealth) {
-      h.health = Math.min(h.maxHealth, h.health + this.diff.heroRegen * dt);
+      h.health = Math.min(h.maxHealth, h.health + this.diff.heroRegen * HEALTH_SCALE * dt);
     }
   }
 

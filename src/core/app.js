@@ -13,6 +13,9 @@ import { ModeSelect } from '../ui/modeSelect.js';
 import { PerfMonitor } from './perfMonitor.js';
 import { loadDifficulty } from '../combat/difficulty.js';
 import { InputManager } from './inputManager.js';
+import { Match } from '../combat/match.js';
+import { OnlineLobby } from '../ui/onlineLobby.js';
+import { Versus } from '../net/versus.js';
 
 const MUSIC = {
   wasteland: 'assets/audio/music/music_boss_heavy.ogg',
@@ -133,13 +136,40 @@ export class App {
       this.enemy
     );
 
+    // Rounds: first to two round wins
+    this.match = new Match({
+      container: this.container,
+      hero: this.hero,
+      enemy: this.enemy,
+      director: this.director,
+      combo: this.combo,
+      fx: this.fx,
+      arena: this.arena,
+      audio: this.audio,
+      memes: this.memes
+    });
+    this.input.blockers.push(this.match);
+
     // Start screen: choose Easy / Medium / Hard. The bot stays put until you do.
     this.modeSelect = new ModeSelect(this.container, this.director.diffKey, (level) => {
       this.director.setDifficulty(level);
-      this.director.paused = false;
-      this.combo.lastActionAt = performance.now();
+      this.match.start();
     });
     this.input.blockers.push(this.modeSelect); // only the menu and the mode picker capture the keyboard; memes never do
+
+    // Online play: skip the bot picker and open the lobby instead
+    const launch = window.__memeDuel || {};
+    if (launch.mode === 'online') {
+      this.modeSelect.isOpen = false;
+      this.modeSelect.root.remove();
+      this.lobby = new OnlineLobby(this.container, {
+        invite: launch.room,
+        onSession: (session) => {
+          this.versus = new Versus(this, session);
+        }
+      });
+      this.input.blockers.push(this.lobby);
+    }
 
     // Start background music on first user interaction (browsers block autoplay)
     const startAudioOnce = () => {
@@ -186,6 +216,8 @@ export class App {
     this.perf.tick(delta);
     this.input.update(simDt);
     this.combo.update(dt);
+    this.match.update(delta);
+    if (this.versus) this.versus.update(dt);
     this.prompt.update(dt);
 
     // Bullet time (a secret move): the bot runs at quarter speed while you act at full speed

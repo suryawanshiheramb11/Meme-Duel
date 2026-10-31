@@ -3,7 +3,7 @@
   "clips": [
     {
       "file": "meme_001.mp4",
-      "title": "(Ahhh....🤣) Funny laughing Meme",
+      "title": "(Ahhh....\ud83e\udd23) Funny laughing Meme",
       "duration": 5.7,
       "tags": [
         "laugh",
@@ -797,17 +797,6 @@
       "thumb": "thumbs/meme_073.jpg"
     },
     {
-      "file": "meme_074.mp4",
-      "title": "Mein Gareeb hun   Creator Need",
-      "duration": 4.4,
-      "tags": [
-        "hurt"
-      ],
-      "phrase": "MEIN GAREEB HUN",
-      "move": "powerup",
-      "thumb": "thumbs/meme_074.jpg"
-    },
-    {
       "file": "meme_075.mp4",
       "title": "Mere Sath Aanyay Hua Hai   Rajiv Talwar Meme Template   Trending Meme Templates Indian Meme Temp",
       "duration": 6,
@@ -1011,6 +1000,19 @@
       "phrase": "TU SAMJHA NAHI",
       "move": "flurry",
       "thumb": "thumbs/meme_092.jpg"
+    },
+    {
+      "file": "meme_093.mp4",
+      "title": "Steven He - Emotional damage",
+      "duration": 3.3,
+      "tags": [
+        "hurt",
+        "ko",
+        "between"
+      ],
+      "phrase": "EMOTIONAL DAMAGE",
+      "move": "slam",
+      "thumb": "thumbs/meme_093.jpg"
     }
   ]
 }

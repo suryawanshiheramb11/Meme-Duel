@@ -93,7 +93,7 @@ You have 100 health and slowly regain it when nothing has hit you for 3 seconds 
 
 ### The queue: every prompt is a meme
 
-The prompts are the catchphrases of **72 meme clips**. The queue is **sorted as a ladder** of special moves, so the fight keeps changing shape:
+The prompts are the catchphrases of **71 meme clips**. The queue is **sorted as a ladder** of special moves, so the fight keeps changing shape:
 
 > flurry → slam → power surge → beam → time skip → (repeat)
 
@@ -109,7 +109,7 @@ Each phrase's special move is **hand-picked by what the line means**, so the act
 | **Meteor slam** | Launch the bot skyward, then spike it into the floor with a shockwave and crater. | violent or accusing lines ("KHOPDI TOR SALAY KA", "CHEATING KARTA HAI TU") |
 | **Meme flurry** | Ten rapid strikes, the last one a launching kick. | mockery, laughing, cheering, impatience ("CLAP CLAP CLAP", "SHABASH BETA...") |
 | **Time skip** | The screen goes dark, the meme's title card appears, you dash through the frozen bot and all the damage lands at once. | "later", "not today" time cards ("2000 YEARS LATER") |
-| **Power surge** | Jump to your next power form for 10 seconds and heal 25 HP. | pity, courage and comeback lines ("MEIN GAREEB HUN", "HEY BHAGWAN") |
+| **Power surge** | Jump to your next power form for 10 seconds and heal 25 HP. | pity, courage and comeback lines ("HEY BHAGWAN") |
 
 The full list lives in the `MOVES` table in `scripts/fetch_memes.js`. I picked these by reading each phrase and clip title, not by listening to every clip, so a few pairings may feel off. They're easy to change.
 
@@ -383,7 +383,7 @@ test/
 - required files, the arena images (all 1920×1080) and audio assets;
 - prompt logic: typing, accuracy, word and sentence events, queue order;
 - **regressions for earlier bugs**: no letter key is ever bound to movement (so **A** and **D** type), every pose keeps its feet on the ground line, and the meme manifest always revalidates;
-- the meme data: 92 clips, 72 typeable phrases (plain A-Z / 0-9 / space), every phrase has its hand-picked move, thumbnails exist, and the ladder order is right;
+- the meme data: 91 clips, 71 typeable phrases (plain A-Z / 0-9 / space), every phrase has its hand-picked move, thumbnails exist, and the ladder order is right;
 - difficulty: every setting rises (or falls) correctly from Easy to Hard, and every attack and counter exists;
 - the no-freeze design: memes never pause the loop, block typing or delay a move, and the overlay is anchored to a fighter and sized relative to the screen;
 - the hosted build: lean (under 40 MB), complete, with the right cache rules and modules preloaded.

@@ -737,7 +737,7 @@ export class ComboEngine {
     const next = FORM_ORDER[Math.min(FORM_ORDER.length - 1, FORM_ORDER.indexOf(this.form) + 1)];
     this.surgeForm = next;
     this.surgeTimer = 10;
-    hero.health = Math.min(hero.maxHealth, hero.health + 25);
+    hero.health = Math.min(hero.maxHealth, hero.health + 25 * (hero.maxHealth / 100));
     this.fx.floatText('+25 HP', hero.x, 2.4, { color: '#7dff9a', size: 28, cls: 'fx-pop' });
     if (next === this.form) {
       // already at the top form: replay the burst so the move still reads
