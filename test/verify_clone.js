@@ -287,7 +287,7 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   assert(lv.every((d) => d.cooldown[0] < d.cooldown[1] && d.idleCooldown[0] < d.idleCooldown[1] && d.windup >= 0.1), 'Every level has sane cooldown ranges and a reactable windup');
   const dirSrc = fs.readFileSync(path.join(ROOT, 'src/combat/fightDirector.js'), 'utf8');
   assert(/setDifficulty\(/.test(dirSrc) && /this\.diff\.windup/.test(dirSrc) && /this\.diff\.damage/.test(dirSrc), 'Fight director reads the difficulty table');
-  assert(fs.existsSync(path.join(ROOT, 'src/ui/modeSelect.js')), 'Start-screen mode picker exists');
+  assert(/showMatchSetup/.test(fs.readFileSync(path.join(ROOT, 'src/ui/arenaPicker.js'), 'utf8')), 'Start screen: level and arena setup exists');
 
   // 9. Hosted build
   console.log('\n[9/10] Slim hosted build (web-dist)...');
@@ -369,13 +369,25 @@ assert(!/textures\/arenas/.test(arenaSrc), 'Arena manager no longer uses game-sc
   const explicit = [...movesBlock.matchAll(/'([^']+)':\s*'(beam|slam|flurry|timeskip|powerup)'/g)];
   const manifest2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/memes/manifest.json'), 'utf8')).clips.filter((c) => c.phrase);
   const explicitMap = Object.fromEntries(explicit.map((m) => [m[1], m[2]]));
+  // clips added from the web list carry their phrase and move on the same line
+  fs.readFileSync(path.join(ROOT, 'scripts/memes_web_list.txt'), 'utf8').split('\n').filter(Boolean).forEach((l) => {
+    const f = l.split('|');
+    explicitMap[f[2]] = f[3];
+  });
   assert(manifest2.every((c) => explicitMap[c.phrase] === c.move), `All ${manifest2.length} phrases use their hand-picked move`);
   const ladderPM = new Function(`${promptSrc.replace(/^export /gm, '')}\nreturn PromptManager;`)();
   const lp = new ladderPM(() => {}, () => {});
   const sample = ['flurry', 'slam', 'powerup', 'beam', 'timeskip'].flatMap((m) => [1, 2, 3].map((i) => ({ phrase: `${m} ${i}`.toUpperCase(), move: m, clip: {} })));
   lp.setQueue(sample);
-  assert(lp.queue.slice(0, 5).map((q) => q.move).join() === 'flurry,slam,powerup,beam,timeskip', 'Queue is sorted as a ladder: flurry, slam, power surge, beam, time skip');
-  assert(lp.queue.slice(5, 10).map((q) => q.move).join() === 'flurry,slam,powerup,beam,timeskip', 'The ladder repeats for the next round');
+  const noRepeat = (q) => q.every((it, i) => i === 0 || it.move !== q[i - 1].move);
+  assert(lp.queue.length === sample.length && sample.every((it) => lp.queue.includes(it)), 'The queue holds every meme exactly once, each with its own move');
+  assert(noRepeat(lp.queue), 'The same special move never plays twice in a row');
+  const orders = new Set();
+  for (let i = 0; i < 12; i++) {
+    lp.setQueue(sample);
+    orders.add(lp.queue.map((q) => q.phrase).join('|'));
+  }
+  assert(orders.size >= 10, `The meme queue is random every round (${orders.size} different orders in 12 rounds)`);
 
   console.log('');
 

@@ -138,7 +138,7 @@ Free options: a Metered.ca or Cloudflare Calls TURN account (sign up, copy the c
 
 ### The queue: every prompt is a meme
 
-The prompts are the catchphrases of **95 meme clips**. The queue is **sorted as a ladder** of special moves, so the fight keeps changing shape:
+The prompts are the catchphrases of **108 meme clips**. The queue is **sorted as a ladder** of special moves, so the fight keeps changing shape:
 
 > flurry → slam → power surge → beam → time skip → (repeat)
 
