@@ -3,7 +3,7 @@
   "clips": [
     {
       "file": "meme_001.mp4",
-      "title": "(Ahhh....\ud83e\udd23) Funny laughing Meme",
+      "title": "(Ahhh....🤣) Funny laughing Meme",
       "duration": 5.7,
       "tags": [
         "laugh",
@@ -1013,6 +1013,427 @@
       "phrase": "EMOTIONAL DAMAGE",
       "move": "slam",
       "thumb": "thumbs/meme_093.jpg"
+    },
+    {
+      "file": "meme_101.mp4",
+      "title": "Omae wa mou shindeiru",
+      "duration": 6,
+      "tags": [
+        "hype",
+        "rage"
+      ],
+      "phrase": "YOU ARE ALREADY DEAD",
+      "move": "beam",
+      "thumb": "thumbs/meme_101.jpg"
+    },
+    {
+      "file": "meme_102.mp4",
+      "title": "Its over 9000",
+      "duration": 6,
+      "tags": [
+        "hype",
+        "powerup"
+      ],
+      "phrase": "ITS OVER NINE THOUSAND",
+      "move": "powerup",
+      "thumb": "thumbs/meme_102.jpg"
+    },
+    {
+      "file": "meme_103.mp4",
+      "title": "Mortal Kombat finish him",
+      "duration": 6,
+      "tags": [
+        "ko",
+        "rage"
+      ],
+      "phrase": "FINISH HIM",
+      "move": "slam",
+      "thumb": "thumbs/meme_103.jpg"
+    },
+    {
+      "file": "meme_104.mp4",
+      "title": "Goku Kamehameha",
+      "duration": 6,
+      "tags": [
+        "hype"
+      ],
+      "phrase": "KAMEHAMEHA",
+      "move": "beam",
+      "thumb": "thumbs/meme_104.jpg"
+    },
+    {
+      "file": "meme_105.mp4",
+      "title": "Scorpion get over here",
+      "duration": 6,
+      "tags": [
+        "launch",
+        "rage"
+      ],
+      "phrase": "GET OVER HERE",
+      "move": "slam",
+      "thumb": "thumbs/meme_105.jpg"
+    },
+    {
+      "file": "meme_106.mp4",
+      "title": "Subzero Hadouken",
+      "duration": 6,
+      "tags": [
+        "hype"
+      ],
+      "phrase": "HADOUKEN",
+      "move": "beam",
+      "thumb": "thumbs/meme_106.jpg"
+    },
+    {
+      "file": "meme_107.mp4",
+      "title": "This is Sparta kick",
+      "duration": 4.4,
+      "tags": [
+        "rage",
+        "launch"
+      ],
+      "phrase": "THIS IS SPARTA",
+      "move": "slam",
+      "thumb": "thumbs/meme_107.jpg"
+    },
+    {
+      "file": "meme_108.mp4",
+      "title": "GTA Wasted",
+      "duration": 6,
+      "tags": [
+        "ko"
+      ],
+      "phrase": "WASTED",
+      "move": "timeskip",
+      "thumb": "thumbs/meme_108.jpg"
+    },
+    {
+      "file": "meme_109.mp4",
+      "title": "NFS Carbon skill issue",
+      "duration": 6,
+      "tags": [
+        "typo",
+        "laugh"
+      ],
+      "phrase": "SKILL ISSUE",
+      "move": "flurry",
+      "thumb": "thumbs/meme_109.jpg"
+    },
+    {
+      "file": "meme_110.mp4",
+      "title": "Ora ora vs muda muda",
+      "duration": 6,
+      "tags": [
+        "hype",
+        "rage"
+      ],
+      "phrase": "ORA ORA ORA",
+      "move": "flurry",
+      "thumb": "thumbs/meme_110.jpg"
+    },
+    {
+      "file": "meme_111.mp4",
+      "title": "Dio Za Warudo",
+      "duration": 6,
+      "tags": [
+        "hype"
+      ],
+      "phrase": "ZA WARUDO",
+      "move": "timeskip",
+      "thumb": "thumbs/meme_111.jpg"
+    },
+    {
+      "file": "meme_112.mp4",
+      "title": "Obi-Wan Hello there",
+      "duration": 6,
+      "tags": [
+        "enter"
+      ],
+      "phrase": "HELLO THERE",
+      "move": "powerup",
+      "thumb": "thumbs/meme_112.jpg"
+    },
+    {
+      "file": "meme_113.mp4",
+      "title": "John Cena you cant see me",
+      "duration": 6,
+      "tags": [
+        "dodge",
+        "laugh"
+      ],
+      "phrase": "YOU CANT SEE ME",
+      "move": "flurry",
+      "thumb": "thumbs/meme_113.jpg"
+    },
+    {
+      "file": "meme_114.mp4",
+      "title": "Thanos I am inevitable",
+      "duration": 5.3,
+      "tags": [
+        "hype"
+      ],
+      "phrase": "I AM INEVITABLE",
+      "move": "beam",
+      "thumb": "thumbs/meme_114.jpg"
+    },
+    {
+      "file": "meme_115.mp4",
+      "title": "Palpatine unlimited power",
+      "duration": 6,
+      "tags": [
+        "hype",
+        "powerup"
+      ],
+      "phrase": "UNLIMITED POWER",
+      "move": "powerup",
+      "thumb": "thumbs/meme_115.jpg"
+    },
+    {
+      "file": "meme_116.mp4",
+      "title": "Gandalf you shall not pass",
+      "duration": 6,
+      "tags": [
+        "dodge"
+      ],
+      "phrase": "YOU SHALL NOT PASS",
+      "move": "slam",
+      "thumb": "thumbs/meme_116.jpg"
+    },
+    {
+      "file": "meme_117.mp4",
+      "title": "Spongebob ight imma head out",
+      "duration": 6,
+      "tags": [
+        "idle"
+      ],
+      "phrase": "IGHT IMMA HEAD OUT",
+      "move": "timeskip",
+      "thumb": "thumbs/meme_117.jpg"
+    },
+    {
+      "file": "meme_118.mp4",
+      "title": "Mission failed well get em next time",
+      "duration": 6,
+      "tags": [
+        "ko",
+        "hurt"
+      ],
+      "phrase": "MISSION FAILED WELL GET EM NEXT TIME",
+      "move": "timeskip",
+      "thumb": "thumbs/meme_118.jpg"
+    },
+    {
+      "file": "meme_119.mp4",
+      "title": "Stewie what are those",
+      "duration": 6,
+      "tags": [
+        "laugh",
+        "typo"
+      ],
+      "phrase": "WHAT ARE THOSE",
+      "move": "flurry",
+      "thumb": "thumbs/meme_119.jpg"
+    },
+    {
+      "file": "meme_120.mp4",
+      "title": "No no no no wait wait",
+      "duration": 5.4,
+      "tags": [
+        "hurt",
+        "typo"
+      ],
+      "phrase": "NO NO NO WAIT WAIT",
+      "move": "powerup",
+      "thumb": "thumbs/meme_120.jpg"
+    },
+    {
+      "file": "meme_121.mp4",
+      "title": "Oh no no no laugh",
+      "duration": 6,
+      "tags": [
+        "laugh",
+        "ko",
+        "hurt"
+      ],
+      "phrase": "OH NO NO NO NO",
+      "move": "flurry",
+      "thumb": "thumbs/meme_121.jpg"
+    },
+    {
+      "file": "meme_122.mp4",
+      "title": "Nani",
+      "duration": 6,
+      "tags": [
+        "hurt",
+        "typo"
+      ],
+      "phrase": "NANI",
+      "move": "slam",
+      "thumb": "thumbs/meme_122.jpg"
+    },
+    {
+      "file": "meme_123.mp4",
+      "title": "Leeroy Jenkins",
+      "duration": 6,
+      "tags": [
+        "enter",
+        "rage"
+      ],
+      "phrase": "LEEROY JENKINS",
+      "move": "slam",
+      "thumb": "thumbs/meme_123.jpg"
+    },
+    {
+      "file": "meme_124.mp4",
+      "title": "Gigachad",
+      "duration": 6,
+      "tags": [
+        "praise",
+        "hype"
+      ],
+      "phrase": "GIGACHAD",
+      "move": "powerup",
+      "thumb": "thumbs/meme_124.jpg"
+    },
+    {
+      "file": "meme_125.mp4",
+      "title": "67 original meme",
+      "duration": 6,
+      "tags": [
+        "laugh",
+        "hype"
+      ],
+      "phrase": "SIX SEVEN",
+      "move": "flurry",
+      "thumb": "thumbs/meme_125.jpg"
+    },
+    {
+      "file": "meme_126.mp4",
+      "title": "Hit the road dude",
+      "duration": 6,
+      "tags": [
+        "launch",
+        "rage"
+      ],
+      "phrase": "HIT THE ROAD DUDE",
+      "move": "slam",
+      "thumb": "thumbs/meme_126.jpg"
+    },
+    {
+      "file": "meme_127.mp4",
+      "title": "He tryna ignore it",
+      "duration": 6,
+      "tags": [
+        "laugh",
+        "typo"
+      ],
+      "phrase": "HE TRYNA IGNORE IT",
+      "move": "flurry",
+      "thumb": "thumbs/meme_127.jpg"
+    },
+    {
+      "file": "meme_128.mp4",
+      "title": "Fairies gossip",
+      "duration": 6,
+      "tags": [
+        "laugh"
+      ],
+      "phrase": "FAIRIES GOSSIPING",
+      "move": "flurry",
+      "thumb": "thumbs/meme_128.jpg"
+    },
+    {
+      "file": "meme_129.mp4",
+      "title": "Skeleton banging shield",
+      "duration": 5.9,
+      "tags": [
+        "hype",
+        "rage"
+      ],
+      "phrase": "SKELETON SHIELD BASH",
+      "move": "slam",
+      "thumb": "thumbs/meme_129.jpg"
+    },
+    {
+      "file": "meme_130.mp4",
+      "title": "Screaming skeleton",
+      "duration": 6,
+      "tags": [
+        "hurt",
+        "hype"
+      ],
+      "phrase": "SCREAMING SKELETON",
+      "move": "beam",
+      "thumb": "thumbs/meme_130.jpg"
+    },
+    {
+      "file": "meme_131.mp4",
+      "title": "Ngl imma take a nap lmk",
+      "duration": 6,
+      "tags": [
+        "idle"
+      ],
+      "phrase": "NGL IMMA TAKE A NAP LMK",
+      "move": "timeskip",
+      "thumb": "thumbs/meme_131.jpg"
+    },
+    {
+      "file": "meme_132.mp4",
+      "title": "Homer drops his donut",
+      "duration": 6,
+      "tags": [
+        "hurt"
+      ],
+      "phrase": "HOMER DROPS HIS DONUT",
+      "move": "powerup",
+      "thumb": "thumbs/meme_132.jpg"
+    },
+    {
+      "file": "meme_133.mp4",
+      "title": "Piccolo aura farming",
+      "duration": 6,
+      "tags": [
+        "hype",
+        "powerup"
+      ],
+      "phrase": "AURA FARMING",
+      "move": "powerup",
+      "thumb": "thumbs/meme_133.jpg"
+    },
+    {
+      "file": "meme_134.mp4",
+      "title": "Chill guy",
+      "duration": 5.9,
+      "tags": [
+        "idle"
+      ],
+      "phrase": "JUST A CHILL GUY",
+      "move": "timeskip",
+      "thumb": "thumbs/meme_134.jpg"
+    },
+    {
+      "file": "meme_135.mp4",
+      "title": "Sigma boy",
+      "duration": 6,
+      "tags": [
+        "praise",
+        "hype"
+      ],
+      "phrase": "SIGMA SIGMA BOY",
+      "move": "powerup",
+      "thumb": "thumbs/meme_135.jpg"
+    },
+    {
+      "file": "meme_136.mp4",
+      "title": "Tung tung tung sahur",
+      "duration": 6,
+      "tags": [
+        "hype",
+        "rage"
+      ],
+      "phrase": "TUNG TUNG TUNG SAHUR",
+      "move": "beam",
+      "thumb": "thumbs/meme_136.jpg"
     }
   ]
 }

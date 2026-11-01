@@ -27,8 +27,6 @@ console.log('====================================================\n');
 console.log('[1/6] Verifying Project Architecture & Core Files...');
 const coreFiles = [
   'package.json',
-  'main.js',
-  'preload.js',
   'server.js',
   'index.html',
   'styles.css',

@@ -46,8 +46,6 @@ Node 18 or newer is enough to serve it. The game is plain static files: there is
 | `npm run build:web` | Builds the slim copy that gets hosted into `web-dist/`. See [Hosting](#hosting-on-vercel). |
 | `npm run fetch:memes` | Downloads, crops, compresses and tags the meme clips. Needs `ffmpeg`. See [Customising](#customising-the-game). |
 | `npm run generate:arenas` | Repaints the nine arena backgrounds. See [Customising](#customising-the-game). |
-| `npm start` | Opens the game in an Electron desktop window. **Not tested** in the current version. |
-| `npm run build:app` | Packages the Electron app for Windows. **Not tested** in the current version. |
 
 Browsers only allow sound after you interact with the page, so the music and meme audio start on your first click or key press.
 
@@ -140,7 +138,7 @@ Free options: a Metered.ca or Cloudflare Calls TURN account (sign up, copy the c
 
 ### The queue: every prompt is a meme
 
-The prompts are the catchphrases of **71 meme clips**. The queue is **sorted as a ladder** of special moves, so the fight keeps changing shape:
+The prompts are the catchphrases of **95 meme clips**. The queue is **sorted as a ladder** of special moves, so the fight keeps changing shape:
 
 > flurry → slam → power surge → beam → time skip → (repeat)
 

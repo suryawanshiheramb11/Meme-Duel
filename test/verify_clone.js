@@ -28,8 +28,6 @@ console.log('[1/10] Verifying 1:1 Engine Architecture & Source Modules...');
 const requiredFiles = [
   'index.html',
   'styles.css',
-  'main.js',
-  'preload.js',
   'package.json',
   'src/core/app.js',
   'src/core/audioSystem.js',

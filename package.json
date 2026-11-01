@@ -2,11 +2,8 @@
   "name": "meme-duel",
   "version": "1.0.0",
   "description": "Meme Duel - a typing beat 'em up where every sentence is a meme",
-  "main": "main.js",
   "scripts": {
-    "start": "electron .",
     "serve": "node server.js",
-    "build:app": "node scripts/package.js",
     "test": "node test/verify_clone.js",
     "generate:arenas": "node scripts/generate_arenas.js",
     "fetch:memes": "node scripts/fetch_memes.js",
@@ -24,8 +21,7 @@
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
-    "@napi-rs/canvas": "^1.1.0",
-    "electron": "^44.6.0"
+    "@napi-rs/canvas": "^1.1.0"
   },
   "dependencies": {
     "peerjs": "^1.5.5",

@@ -69,6 +69,7 @@ export function showMatchSetup(container, arenaManager, { difficulty = 'medium',
       <div class="as-levels" role="group" aria-label="Bot level">
         ${LEVELS.map((k) => `<button type="button" class="as-lvl as-${k}${k === level ? ' on' : ''}" data-level="${k}">${DIFFICULTIES[k].label}</button>`).join('')}
       </div>
+      <p class="as-enter">${touch ? '<b>TAP</b> AN ARENA TO START' : 'PRESS <kbd>ENTER</kbd> TO START'}</p>
       <p class="as-sub">${touch ? 'Tap' : 'Click'} an arena to fight there. No pick? Random arena in <b class="as-count">${seconds}</b>s</p>
       <div class="as-bar"><span></span></div>
       <div class="as-grid">

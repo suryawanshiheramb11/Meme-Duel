@@ -140,18 +140,7 @@ export class Match {
   }
 
   // ------------------------------------------------------------- flow
-  /** Solo fights wait on the game screen until you press Enter. */
-  waitForStart() {
-    this.state = 'ready';
-    this.director.paused = true;
-    this.armed = false;
-    setTimeout(() => (this.armed = true), 250); // the Enter that picked the level must not also start it
-    this.say('PRESS ENTER TO START', 'start', 0, '<small>READY?</small><b>PRESS <u>ENTER</u> TO START</b>');
-    this.banner.onclick = () => this.armed && this.start();
-  }
-
   start() {
-    this.banner.onclick = null;
     this.scores = { me: 0, foe: 0 };
     this.over.hidden = true;
     this.renderPips();

@@ -15,9 +15,12 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const LIST = path.join(__dirname, 'memes_drive_list.txt');
+const WEB_FIRST = 101; // web clips are numbered meme_101 upward so they never collide with the Drive clips
+const WEB_LIST = path.join(__dirname, 'memes_web_list.txt'); // youtubeId|title|PHRASE|move|tags (downloaded with yt-dlp)
 const OUT = path.join(ROOT, 'assets', 'memes');
 const CACHE = path.join(os.tmpdir(), 'meme-duel-cache');
 const MAX_SECONDS = 6;
+const WEB_ONLY = process.argv.includes('--web-only'); // add the web clips, keep every existing manifest entry untouched
 const RETAG_ONLY = process.argv.includes('--retag');
 const RECOMPRESS = process.argv.includes('--recompress'); // redo every clip from the cached originals
 
@@ -235,6 +238,22 @@ function makeThumb(videoFile, thumbFile, duration) {
 }
 
 function parseList() {
+  const drive = parseDriveList();
+  const web = fs.existsSync(WEB_LIST)
+    ? fs
+        .readFileSync(WEB_LIST, 'utf8')
+        .split('\n')
+        .filter((l) => l.trim() && !l.startsWith('#'))
+        .map((line, i) => {
+          const [id, name, phrase, move, tags] = line.split('|').map((x) => x.trim());
+          const n = WEB_FIRST + i;
+          return { id, yt: true, name, phrase, move, tags: tags ? tags.split(',') : null, file: `meme_${String(n).padStart(3, '0')}.mp4` };
+        })
+    : [];
+  return [...drive, ...web];
+}
+
+function parseDriveList() {
   return fs
     .readFileSync(LIST, 'utf8')
     .split('\n')
@@ -266,6 +285,16 @@ function probeDuration(file) {
 }
 
 async function download(item, dest) {
+  if (item.yt) {
+    // full video (not audio-only), small enough for an in-game popup
+    const r = spawnSync(
+      'yt-dlp',
+      ['--no-playlist', '--no-update', '-q', '-f', 'bv*[height<=480]+ba/b[height<=480]/b', '--merge-output-format', 'mp4', '-o', dest, `https://www.youtube.com/watch?v=${item.id}`],
+      { encoding: 'utf8' }
+    );
+    if (r.status !== 0 || !fs.existsSync(dest)) throw new Error(`yt-dlp failed: ${(r.stderr || '').trim().slice(-120)}`);
+    return;
+  }
   const url = `https://drive.usercontent.google.com/download?id=${item.id}&export=download&confirm=t`;
   const res = await fetch(url, { redirect: 'follow' });
   const type = res.headers.get('content-type') || '';
@@ -304,7 +333,7 @@ function compress(src, dest) {
 }
 
 async function main() {
-  const items = parseList();
+  const items = parseList().filter((it) => !WEB_ONLY || it.yt);
   fs.mkdirSync(OUT, { recursive: true });
   fs.mkdirSync(CACHE, { recursive: true });
   const ffmpeg = hasFfmpeg();
@@ -343,7 +372,7 @@ async function main() {
     const file = path.join(OUT, item.file);
     if (!fs.existsSync(file)) continue;
     const duration = probeDuration(file);
-    const tags = tagsFor(item.name);
+    const tags = item.tags ? [...new Set([...tagsFor(item.name).filter((t) => t !== 'misc'), ...item.tags])] : tagsFor(item.name);
     const thumbName = item.file.replace(/\.mp4$/, '.jpg');
     const clip = {
       file: item.file,
@@ -351,15 +380,21 @@ async function main() {
       duration,
       tags
     };
-    const phrase = phraseFor(item.name);
+    const phrase = item.phrase || phraseFor(item.name);
     if (phrase) {
       clip.phrase = phrase;
-      clip.move = MOVES[phrase] || moveFor(tags, clips.length);
+      clip.move = item.move || MOVES[phrase] || moveFor(tags, clips.length);
       if (ffmpeg && makeThumb(file, path.join(thumbDir, thumbName), duration)) clip.thumb = `thumbs/${thumbName}`;
     }
     clips.push(clip);
   }
-  fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ version: 1, clips }, null, 2) + '\n');
+  let all = clips;
+  if (WEB_ONLY) {
+    const old = JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.json'), 'utf8')).clips;
+    const fresh = new Set(clips.map((c) => c.file));
+    all = [...old.filter((c) => !fresh.has(c.file)), ...clips];
+  }
+  fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ version: 1, clips: all }, null, 2) + '\n');
 
   const bytes = clips.reduce((n, c) => n + fs.statSync(path.join(OUT, c.file)).size, 0);
   const byTag = {};
