@@ -49,26 +49,47 @@ export class PromptManager {
     this.elapsedSeconds = 0;
   }
 
-  // items: [{ phrase, clip, move }]. Sorted into a repeating "ladder" of moves so the fight keeps
-  // changing shape: flurry, slam, power surge, beam, time skip, then round again. Within each move
-  // the memes are shuffled. When a move runs out the ladder simply skips it.
+  // items: [{ phrase, clip, move }]. Every call builds a fresh random queue: memes are shuffled
+  // (Fisher-Yates) inside each move type, then dealt out in a random move order that never repeats
+  // the same move back to back and never opens with the same meme as the previous queue. Each meme
+  // keeps its own move, so the special attack always matches the meme you typed.
   setQueue(items) {
     this.sourceItems = items;
     const LADDER = ['flurry', 'slam', 'powerup', 'beam', 'timeskip'];
-    const buckets = {};
-    [...items]
-      .sort(() => Math.random() - 0.5)
-      .forEach((it) => (buckets[LADDER.includes(it.move) ? it.move : 'other'] = buckets[LADDER.includes(it.move) ? it.move : 'other'] || []).push(it));
-    const ordered = [];
-    while (ordered.length < items.length) {
-      let took = false;
-      for (const mv of [...LADDER, 'other']) {
-        if (buckets[mv] && buckets[mv].length) {
-          ordered.push(buckets[mv].shift());
-          took = true;
-        }
+    const shuffle = (arr) => {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
       }
-      if (!took) break;
+      return arr;
+    };
+    const buckets = {};
+    shuffle([...items]).forEach((it) => {
+      const mv = LADDER.includes(it.move) ? it.move : 'other';
+      (buckets[mv] = buckets[mv] || []).push(it);
+    });
+    const ordered = [];
+    let last = null;
+    while (ordered.length < items.length) {
+      const avail = Object.keys(buckets).filter((k) => buckets[k].length);
+      if (!avail.length) break;
+      // weight by how many memes each move still has, so big buckets don't pile up at the end
+      const pool = avail.filter((k) => k !== last);
+      const from = pool.length ? pool : avail;
+      const total = from.reduce((n, k) => n + buckets[k].length, 0);
+      let r = Math.random() * total;
+      let pick = from[from.length - 1];
+      for (const k of from) {
+        r -= buckets[k].length;
+        if (r < 0) { pick = k; break; }
+      }
+      ordered.push(buckets[pick].shift());
+      last = pick;
+    }
+    // don't open with the meme the previous queue opened with
+    if (this.queue && this.queue.length > 1 && ordered.length > 1 && ordered[0] === this.queue[0]) {
+      const k = 1 + Math.floor(Math.random() * (ordered.length - 1));
+      [ordered[0], ordered[k]] = [ordered[k], ordered[0]];
     }
     this.queue = ordered;
     this.queuePos = 0;
@@ -147,7 +168,10 @@ export class PromptManager {
       ? this.sourceItems
       : this.defaultPrompts.map((phrase) => ({ phrase, clip: null, move: 'beam' }))
     ).slice();
-    pool.sort(() => Math.random() - 0.5);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
     const picks = [];
     const letters = new Set();
     for (const it of pool) {
