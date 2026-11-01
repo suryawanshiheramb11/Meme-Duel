@@ -48,7 +48,7 @@ export class ModeSelect {
             </button>`;
           }).join('')}
         </div>
-        <p class="ms-hint">Pick with <b>1</b>, <b>2</b>, <b>3</b> or <b>&larr; &rarr;</b>, then press <b>ENTER</b> to start. Change it any time from the pause menu (ESC).</p>
+        <p class="ms-hint">Pick with <b>1</b>, <b>2</b>, <b>3</b> or <b>&larr; &rarr;</b>, then press <b>ENTER</b>. Change it any time from the pause menu (ESC).</p>
       </div>`;
     container.appendChild(this.root);
 

@@ -15,7 +15,7 @@ import { loadDifficulty } from '../combat/difficulty.js';
 import { InputManager } from './inputManager.js';
 import { Match } from '../combat/match.js';
 import { currentGear } from './locker.js';
-import { createArenaPicker, loadArena } from '../ui/arenaPicker.js';
+import { createArenaPicker, loadArena, showArenaSelect } from '../ui/arenaPicker.js';
 import { OnlineLobby } from '../ui/onlineLobby.js';
 import { Versus } from '../net/versus.js';
 
@@ -194,9 +194,11 @@ export class App {
     // Start screen: choose Easy / Medium / Hard. The bot stays put until you do.
     this.modeSelect = new ModeSelect(this.container, this.director.diffKey, (level) => {
       this.director.setDifficulty(level);
-      this.match.waitForStart();
+      this.match.state = 'ready';
+      this.director.paused = true;
+      // arena screen, then the fight starts by itself (random arena if none is picked)
+      showArenaSelect(this.container, this.arena, () => this.match.start());
     });
-    this.modeSelect.addArenaPicker(createArenaPicker(this.arena, { label: 'ARENA: where you fight' }));
     this.input.blockers.push(this.modeSelect); // only the menu and the mode picker capture the keyboard; memes never do
 
     // Online play: skip the bot picker and open the lobby instead

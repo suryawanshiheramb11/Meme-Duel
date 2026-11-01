@@ -996,3 +996,14 @@ body.tactical #floating-prompt-container { top: calc(112px + clamp(120px, 17vh, 
 body.tactical #floating-prompt-container { top: calc(104px + clamp(92px, 12.5vh, 124px) + 16px); }
 body.tactical #prompt-text-display { font-size: clamp(20px, 2.8vw, 38px); }
 .tac-hint { font-size: clamp(16px, 2.2vh, 22px); }
+
+/* Arena choice before a solo fight */
+#arena-select { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(8, 8, 11, 0.82); transition: opacity 0.35s; }
+#arena-select.closing { opacity: 0; pointer-events: none; }
+.as-wrap { width: min(920px, 92vw); text-align: center; }
+.as-title { margin: 0; font-family: var(--font-display); font-size: clamp(32px, 6vh, 60px); letter-spacing: 4px; color: #ffd23a; text-shadow: 4px 4px 0 #000; }
+.as-sub { margin: 6px 0 0; font-family: var(--font-display); font-size: 20px; letter-spacing: 2px; color: #9aa4b8; }
+.as-sub b { color: #fff; }
+.as-bar { height: 8px; margin-top: 18px; background: #1b1d27; border: 2px solid #000; }
+.as-bar span { display: block; height: 100%; background: #ffd23a; transform-origin: left; animation: as-drain linear forwards; }
+@keyframes as-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
