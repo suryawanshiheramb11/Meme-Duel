@@ -997,13 +997,49 @@ body.tactical #floating-prompt-container { top: calc(104px + clamp(92px, 12.5vh,
 body.tactical #prompt-text-display { font-size: clamp(20px, 2.8vw, 38px); }
 .tac-hint { font-size: clamp(16px, 2.2vh, 22px); }
 
-/* Arena choice before a solo fight */
-#arena-select { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(8, 8, 11, 0.82); transition: opacity 0.35s; }
+/* Match setup (bot level + arena) shown as soon as the game opens */
+#arena-select { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; overflow-y: auto; background: rgba(8, 8, 11, 0.86); transition: opacity 0.35s; }
 #arena-select.closing { opacity: 0; pointer-events: none; }
-.as-wrap { width: min(920px, 92vw); text-align: center; }
-.as-title { margin: 0; font-family: var(--font-display); font-size: clamp(32px, 6vh, 60px); letter-spacing: 4px; color: #ffd23a; text-shadow: 4px 4px 0 #000; }
-.as-sub { margin: 6px 0 0; font-family: var(--font-display); font-size: 20px; letter-spacing: 2px; color: #9aa4b8; }
+.as-wrap { width: min(1040px, 100%); margin: auto; text-align: center; }
+.as-title { margin: 0; font-family: var(--font-display); font-size: clamp(30px, 5.5vh, 54px); letter-spacing: 4px; color: #ffd23a; text-shadow: 4px 4px 0 #000; }
+.as-levels { display: flex; justify-content: center; gap: 8px; margin: 6px 0 4px; }
+.as-lvl { min-width: 96px; padding: 8px 16px; font-family: var(--font-display); font-size: 22px; letter-spacing: 2px; color: #c9d3e2; background: #14161f; border: 3px solid #2b2f3d; cursor: pointer; touch-action: manipulation; }
+.as-lvl.on { color: #08080b; background: #ffd23a; border-color: #fff; box-shadow: 3px 3px 0 #000; }
+.as-sub { margin: 6px 0 0; font-family: var(--font-display); font-size: 19px; letter-spacing: 2px; color: #9aa4b8; }
 .as-sub b { color: #fff; }
-.as-bar { height: 8px; margin-top: 18px; background: #1b1d27; border: 2px solid #000; }
+.as-bar { height: 8px; margin: 10px 0 14px; background: #1b1d27; border: 2px solid #000; }
 .as-bar span { display: block; height: 100%; background: #ffd23a; transform-origin: left; animation: as-drain linear forwards; }
 @keyframes as-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.as-card { padding: 0; font: inherit; color: #c9d3e2; background: #0e1018; border: 3px solid #2b2f3d; cursor: pointer; overflow: hidden; touch-action: manipulation; transition: transform 0.12s, border-color 0.12s; }
+.as-card:hover, .as-card:focus-visible { border-color: #fff; transform: translateY(-3px); }
+.as-card.on { border-color: #ffd23a; box-shadow: 4px 4px 0 #000; transform: translateY(-3px) scale(1.03); }
+.as-thumb { display: block; width: 100%; aspect-ratio: 16 / 9; background-size: cover; background-position: center; }
+.as-name { display: block; padding: 7px 6px; font-family: var(--font-display); font-size: 20px; letter-spacing: 1.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 720px) {
+  .as-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .as-name { font-size: 16px; padding: 5px 4px; }
+  .as-sub { font-size: 16px; }
+  .as-lvl { min-width: 0; flex: 1; font-size: 18px; padding: 8px 6px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .as-title { display: none; }
+  .as-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .as-bar { margin: 6px 0 8px; }
+}
+
+/* Phone controls */
+#touch-controls { position: fixed; inset: 0; z-index: 40; pointer-events: none; -webkit-user-select: none; user-select: none; }
+.tc-btn { pointer-events: auto; touch-action: none; -webkit-touch-callout: none; font-family: var(--font-display); font-size: 20px; letter-spacing: 1px; color: #fff; background: rgba(20, 22, 31, 0.72); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 12px; padding: 0; min-width: 58px; height: 52px; }
+.tc-btn.down { background: #ffd23a; color: #08080b; border-color: #fff; }
+.tc-pad { position: absolute; bottom: max(10px, env(safe-area-inset-bottom)); display: flex; gap: 8px; }
+.tc-left { left: max(10px, env(safe-area-inset-left)); }
+.tc-left .tc-btn { width: 72px; height: 64px; font-size: 26px; }
+.tc-right { right: max(10px, env(safe-area-inset-right)); flex-wrap: wrap; justify-content: flex-end; width: 210px; }
+.tc-type { position: absolute; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); min-width: 150px; height: 56px; font-size: 24px; color: #08080b; background: #ffd23a; border-color: #fff; }
+.tc-type.pulse { animation: tc-pulse 1.2s ease-in-out infinite; }
+@keyframes tc-pulse { 50% { transform: translateX(-50%) scale(1.08); } }
+.tc-small { position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); min-width: 48px; height: 40px; font-size: 18px; }
+#tc-input { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0.01; border: 0; padding: 0; font-size: 16px; pointer-events: none; }
+body.touch-ui .ld-start { display: none; }
+@media (max-width: 480px) { .tc-right { width: 170px; } .tc-btn { min-width: 50px; height: 46px; font-size: 17px; } .tc-left .tc-btn { width: 60px; height: 58px; } .tc-type { min-width: 120px; font-size: 20px; } }

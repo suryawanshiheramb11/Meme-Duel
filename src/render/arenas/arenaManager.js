@@ -73,7 +73,8 @@ export class ArenaManager {
     const aspect = window.innerWidth / Math.max(1, window.innerHeight);
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
-    this.camDist = Math.max(8.2, MIN_VISIBLE_WIDTH / (2 * TAN_HALF_FOV * aspect));
+    this.baseDist = Math.max(8.2, MIN_VISIBLE_WIDTH / (2 * TAN_HALF_FOV * aspect));
+    this.camDist = this.baseDist;
     this.camY = (1 - 2 * FEET_FRAC) * -1 * TAN_HALF_FOV * this.camDist;
     this.aspect = aspect;
   }
@@ -82,7 +83,7 @@ export class ArenaManager {
     const dist = this.camDist - BG_Z;
     const visH = 2 * dist * TAN_HALF_FOV;
     const visW = visH * this.aspect;
-    const needW = visW + 1.6; // slack for camera pan + parallax
+    const needW = visW + 1.6 + 0.3 * Math.abs(this.camX); // slack for camera pan + parallax
     const scale = Math.max(needW / 16, visH / 9);
     this.bgMesh.scale.set(scale, scale, 1);
     this.bgMesh.position.y = this.camY;
@@ -161,14 +162,28 @@ export class ArenaManager {
     this.zoomKick = Math.min(1.5, this.zoomKick + amount);
   }
 
-  setFocus(x) {
+  // x: where the camera should look; span: distance between the fighters (0 = no framing)
+  setFocus(x, span = 0) {
     this.focusX = x;
+    this.focusSpan = span;
+  }
+
+  // Zoom out (and re-aim) just enough that both fighters stay on screen with a margin
+  frame(delta) {
+    const base = this.baseDist || this.camDist;
+    const need = ((this.focusSpan || 0) + 3.2) / (2 * TAN_HALF_FOV * this.aspect);
+    const target = Math.min(base * 1.8, Math.max(base, need));
+    this.camDist += (target - this.camDist) * Math.min(1, delta * 3);
+    this.camY = (1 - 2 * FEET_FRAC) * -1 * TAN_HALF_FOV * this.camDist;
+    this.fitBackground();
   }
 
   update(delta) {
     // Ease toward the midpoint between fighters, clamped so the backdrop edge never shows.
-    const target = THREE.MathUtils.clamp(this.focusX * 0.7, -3, 3);
-    this.camX += (target - this.camX) * Math.min(1, delta * 4);
+    // Centre on the midpoint so neither fighter is ever pushed off the edge
+    const target = THREE.MathUtils.clamp(this.focusX, -6, 6);
+    this.camX += (target - this.camX) * Math.min(1, delta * 5);
+    this.frame(delta);
 
     this.zoomKick = Math.max(0, this.zoomKick - delta * 3.2);
     const dist = this.camDist - this.zoomKick * 0.6;

@@ -9,13 +9,13 @@ import { PromptManager } from '../combat/promptManager.js';
 import { RetroHud } from '../ui/retroHud.js';
 import { MemeComboMenu } from '../ui/memeComboMenu.js';
 import { MemeReactions } from '../ui/memeReactions.js';
-import { ModeSelect } from '../ui/modeSelect.js';
 import { PerfMonitor } from './perfMonitor.js';
 import { loadDifficulty } from '../combat/difficulty.js';
 import { InputManager } from './inputManager.js';
 import { Match } from '../combat/match.js';
 import { currentGear } from './locker.js';
-import { createArenaPicker, loadArena, showArenaSelect } from '../ui/arenaPicker.js';
+import { createArenaPicker, loadArena, showMatchSetup } from '../ui/arenaPicker.js';
+import { createTouchControls, isTouchDevice } from '../ui/touchControls.js';
 import { OnlineLobby } from '../ui/onlineLobby.js';
 import { Versus } from '../net/versus.js';
 
@@ -191,21 +191,22 @@ export class App {
       this.combo.missStreak = 0;
     };
 
-    // Start screen: choose Easy / Medium / Hard. The bot stays put until you do.
-    this.modeSelect = new ModeSelect(this.container, this.director.diffKey, (level) => {
-      this.director.setDifficulty(level);
+    if (isTouchDevice()) createTouchControls(this.container);
+
+    // Pre-fight setup (bot level + arena) opens immediately; the fight starts by itself when it closes.
+    const launch = window.__memeDuel || {};
+    if (launch.mode !== 'online') {
       this.match.state = 'ready';
       this.director.paused = true;
-      // arena screen, then the fight starts by itself (random arena if none is picked)
-      showArenaSelect(this.container, this.arena, () => this.match.start());
-    });
-    this.input.blockers.push(this.modeSelect); // only the menu and the mode picker capture the keyboard; memes never do
+      this.setup = showMatchSetup(this.container, this.arena, { difficulty: this.director.diffKey, onDone: (level) => {
+        this.director.setDifficulty(level);
+        this.match.start();
+      } });
+      this.input.blockers.push(this.setup);
+    }
 
     // Online play: skip the bot picker and open the lobby instead
-    const launch = window.__memeDuel || {};
     if (launch.mode === 'online') {
-      this.modeSelect.isOpen = false;
-      this.modeSelect.root.remove();
       this.lobby = new OnlineLobby(this.container, {
         invite: launch.room,
         arenaPicker: createArenaPicker(this.arena, { label: 'ARENA: used when you host the match' }),

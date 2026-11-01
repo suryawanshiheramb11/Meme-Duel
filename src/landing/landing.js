@@ -34,7 +34,7 @@ const GAME_MODULES = [
   'src/render/stickman/paperStandee.js',
   'src/ui/memeReactions.js',
   'src/ui/memeComboMenu.js',
-  'src/ui/modeSelect.js',
+  'src/ui/touchControls.js',
   'src/ui/arenaPicker.js',
   'src/ui/retroHud.js',
   'src/ui/onlineLobby.js',
@@ -192,6 +192,13 @@ window.addEventListener('keydown', (e) => {
     buttons[i < 0 ? 0 : next].focus();
   }
 });
+
+if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+  const hint = $('.ld-start');
+  if (hint) hint.innerHTML = 'Tap <b>Play vs Bot</b> to start';
+  const foot = $('.ld-foot');
+  if (foot) foot.textContent = 'On a phone: tap TAP TO TYPE to open your keyboard. Walk, jump and guard have on-screen buttons.';
+}
 
 if (invite) {
   $('#ld-invite').textContent = `You've been invited to room ${invite}.`;

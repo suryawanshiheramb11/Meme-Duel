@@ -231,7 +231,10 @@ export class FightDirector {
   }
 
   update(dt) {
-    if (this.paused && !this.versus) return;
+    if (this.paused && !this.versus) {
+      this.frameFighters();
+      return;
+    }
     const h = this.hero;
     const e = this.enemy;
     this.sinceHeroHurt += dt;
@@ -246,16 +249,32 @@ export class FightDirector {
     this.updateHero(dt);
     this.updateTrails(dt);
 
-    // Keep both fighters inside the arena
+    this.frameFighters();
+  }
+
+  // Keep both fighters inside the arena and on screen. Also runs while paused (KO, finish him,
+  // fatality), when a knocked-down fighter is still sliding.
+  frameFighters() {
+    const h = this.hero;
+    const e = this.enemy;
     h.x = Math.max(-HERO_BOUND, Math.min(HERO_BOUND, h.x));
     if (this.versus) {
       e.x = Math.max(-HERO_BOUND, Math.min(HERO_BOUND, e.x));
     } else if (!this.entering) {
       if (e.x > ENEMY_BOUND) { e.x = ENEMY_BOUND; e.vx = Math.min(0, e.vx); }
       if (e.x < -ENEMY_BOUND) { e.x = -ENEMY_BOUND; e.vx = Math.max(0, e.vx); }
+      // Safety net: the opponent never leaves the visible screen, whatever the screen shape
+      const lim = this.arena.worldHalfWidth() - 1.1;
+      const lo = this.arena.camX - lim;
+      const hi = this.arena.camX + lim;
+      if (e.x > hi) { e.x = hi; e.vx = Math.min(0, e.vx); }
+      if (e.x < lo) { e.x = lo; e.vx = Math.max(0, e.vx); }
+      if (h.x > hi) { h.x = hi; h.vx = Math.min(0, h.vx); }
+      if (h.x < lo) { h.x = lo; h.vx = Math.max(0, h.vx); }
     }
 
-    this.arena.setFocus(this.entering ? h.x : (h.x + e.x) / 2);
+    if (this.entering) this.arena.setFocus(h.x, 0);
+    else this.arena.setFocus((h.x + e.x) / 2, Math.abs(e.x - h.x));
   }
 
   updateFacing() {
